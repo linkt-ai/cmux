@@ -47,3 +47,12 @@ tests/visual_report.html
 # Local scratch (screenshots, etc.)
 tmp/
 tmp-*/
+
+# Local notes
+CLAUDE.local.md
+
+# Workspace (session context, notes)
+workspace/
+
+# Git worktrees
+worktrees/
