@@ -55,7 +55,14 @@ struct PanelContentView: View {
                 )
             }
         case .gitGraph:
-            EmptyView()
+            if let gitGraphPanel = panel as? GitGraphPanel {
+                GitGraphPanelView(
+                    panel: gitGraphPanel,
+                    isFocused: isFocused,
+                    isVisibleInUI: isVisibleInUI,
+                    portalPriority: portalPriority
+                )
+            }
         }
     }
 }

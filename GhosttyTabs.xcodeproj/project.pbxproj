@@ -24,6 +24,12 @@
 		A5001226 /* SocketControlSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001225 /* SocketControlSettings.swift */; };
 		A5001601 /* SentryHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001600 /* SentryHelper.swift */; };
 		A5001621 /* AppleScriptSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001620 /* AppleScriptSupport.swift */; };
+		A5001440 /* PanelTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001450 /* PanelTypeTests.swift */; };
+		A5001441 /* GitGraphDataProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001451 /* GitGraphDataProviderTests.swift */; };
+		A5001442 /* GitGraphPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001452 /* GitGraphPanelTests.swift */; };
+		A5001420 /* GitGraphDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001430 /* GitGraphDataProvider.swift */; };
+		A5001421 /* GitGraphPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001431 /* GitGraphPanel.swift */; };
+		A5001422 /* GitGraphPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001432 /* GitGraphPanelView.swift */; };
 		A5001400 /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001410 /* Panel.swift */; };
 		A5001401 /* TerminalPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001411 /* TerminalPanel.swift */; };
 		A5001402 /* BrowserPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001412 /* BrowserPanel.swift */; };
@@ -175,6 +181,9 @@
 			A5001511 /* UITestRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestRecorder.swift; sourceTree = "<group>"; };
 			A5001520 /* PostHogAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostHogAnalytics.swift; sourceTree = "<group>"; };
 			A5001225 /* SocketControlSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketControlSettings.swift; sourceTree = "<group>"; };
+		A5001430 /* GitGraphDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphDataProvider.swift; sourceTree = "<group>"; };
+		A5001431 /* GitGraphPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/GitGraphPanel.swift; sourceTree = "<group>"; };
+		A5001432 /* GitGraphPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/GitGraphPanelView.swift; sourceTree = "<group>"; };
 		A5001410 /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/Panel.swift; sourceTree = "<group>"; };
 		A5001411 /* TerminalPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/TerminalPanel.swift; sourceTree = "<group>"; };
 		A5001412 /* BrowserPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/BrowserPanel.swift; sourceTree = "<group>"; };
@@ -242,6 +251,10 @@
 					FA000001A1B2C3D4E5F60718 /* WorkspaceStressProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStressProfileTests.swift; sourceTree = "<group>"; };
 					A5008380 /* BrowserFindJavaScriptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserFindJavaScriptTests.swift; sourceTree = "<group>"; };
 				A5008382 /* CommandPaletteSearchEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteSearchEngineTests.swift; sourceTree = "<group>"; };
+				F8000001A1B2C3D4E5F60718 /* SocketControlPasswordStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketControlPasswordStoreTests.swift; sourceTree = "<group>"; };
+				A5001450 /* PanelTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelTypeTests.swift; sourceTree = "<group>"; };
+				A5001451 /* GitGraphDataProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphDataProviderTests.swift; sourceTree = "<group>"; };
+				A5001452 /* GitGraphPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphPanelTests.swift; sourceTree = "<group>"; };
 					DA7A10CA710E000000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		DA7A10CA710E000000000002 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		A5001622 /* cmux.sdef */ = {isa = PBXFileReference; lastKnownFileType = text.sdef; path = cmux.sdef; sourceTree = "<group>"; };
@@ -382,9 +395,12 @@
 				A5001301 /* SurfaceSearchOverlay.swift */,
 				A5008370 /* BrowserSearchOverlay.swift */,
 				A5008372 /* BrowserFindJavaScript.swift */,
+				A5001430 /* GitGraphDataProvider.swift */,
 				A5001410 /* Panel.swift */,
 				A5001411 /* TerminalPanel.swift */,
 				A5001412 /* BrowserPanel.swift */,
+				A5001431 /* GitGraphPanel.swift */,
+				A5001432 /* GitGraphPanelView.swift */,
 				A5001413 /* TerminalPanelView.swift */,
 				A5001414 /* BrowserPanelView.swift */,
 				A5001418 /* MarkdownPanel.swift */,
@@ -477,6 +493,9 @@
 					FA000001A1B2C3D4E5F60718 /* WorkspaceStressProfileTests.swift */,
 					A5008380 /* BrowserFindJavaScriptTests.swift */,
 					A5008382 /* CommandPaletteSearchEngineTests.swift */,
+					A5001450 /* PanelTypeTests.swift */,
+					A5001451 /* GitGraphDataProviderTests.swift */,
+					A5001452 /* GitGraphPanelTests.swift */,
 				);
 				path = cmuxTests;
 				sourceTree = "<group>";
@@ -654,9 +673,12 @@
 				A5001303 /* SurfaceSearchOverlay.swift in Sources */,
 				A5008371 /* BrowserSearchOverlay.swift in Sources */,
 				A5008373 /* BrowserFindJavaScript.swift in Sources */,
+				A5001420 /* GitGraphDataProvider.swift in Sources */,
 				A5001400 /* Panel.swift in Sources */,
 				A5001401 /* TerminalPanel.swift in Sources */,
 				A5001402 /* BrowserPanel.swift in Sources */,
+				A5001421 /* GitGraphPanel.swift in Sources */,
+				A5001422 /* GitGraphPanelView.swift in Sources */,
 				A5001403 /* TerminalPanelView.swift in Sources */,
 				A5001404 /* BrowserPanelView.swift in Sources */,
 				A5001420 /* MarkdownPanel.swift in Sources */,
@@ -717,6 +739,9 @@
 					FA000000A1B2C3D4E5F60718 /* WorkspaceStressProfileTests.swift in Sources */,
 					A5008381 /* BrowserFindJavaScriptTests.swift in Sources */,
 					A5008383 /* CommandPaletteSearchEngineTests.swift in Sources */,
+					A5001440 /* PanelTypeTests.swift in Sources */,
+					A5001441 /* GitGraphDataProviderTests.swift in Sources */,
+					A5001442 /* GitGraphPanelTests.swift in Sources */,
 				);
 				runOnlyForDeploymentPostprocessing = 0;
 			};
