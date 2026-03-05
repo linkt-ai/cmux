@@ -1,4 +1,3 @@
-import Foundation
 import Combine
 import WebKit
 import AppKit
@@ -10,8 +9,11 @@ final class GitGraphPanel: Panel, ObservableObject {
     let panelType: PanelType = .gitGraph
     let webView: CmuxWebView
     let repoPath: String
+    let workspaceId: UUID
+    let repoName: String
 
     @Published var displayTitle: String
+    @Published private(set) var currentBranch: String?
     @Published private(set) var focusFlashToken: Int = 0
 
     var displayIcon: String? { "arrow.triangle.branch" }
@@ -22,9 +24,11 @@ final class GitGraphPanel: Panel, ObservableObject {
 
     init(workspaceId: UUID, repoPath: String) {
         self.id = UUID()
+        self.workspaceId = workspaceId
         self.repoPath = repoPath
 
         let repoName = URL(fileURLWithPath: repoPath).lastPathComponent
+        self.repoName = repoName
         self.displayTitle = repoName
 
         let config = WKWebViewConfiguration()
@@ -87,10 +91,11 @@ final class GitGraphPanel: Panel, ObservableObject {
             switch result {
             case .success(let data):
                 self.pushDataToJS(data)
+                self.currentBranch = data.currentBranch
                 if let branch = data.currentBranch {
-                    self.displayTitle = "\(data.repoName) (\(branch))"
+                    self.displayTitle = "\(self.repoName) (\(branch))"
                 } else {
-                    self.displayTitle = data.repoName
+                    self.displayTitle = self.repoName
                 }
             case .failure:
                 break
@@ -103,10 +108,12 @@ final class GitGraphPanel: Panel, ObservableObject {
         encoder.dateEncodingStrategy = .iso8601
         guard let jsonData = try? encoder.encode(data),
               let jsonString = String(data: jsonData, encoding: .utf8) else { return }
-        let escaped = jsonString
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "'", with: "\\'")
-        webView.evaluateJavaScript("window.updateGraph('\(escaped)')") { _, _ in }
+        webView.callAsyncJavaScript(
+            "window.updateGraph(jsonString)",
+            arguments: ["jsonString": jsonString],
+            in: nil,
+            in: .page
+        ) { _ in }
     }
 
     // MARK: - Theme
@@ -118,7 +125,12 @@ final class GitGraphPanel: Panel, ObservableObject {
             guard let appearance = NSApp?.effectiveAppearance else { return false }
             return appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         }()
-        webView.evaluateJavaScript("window.applyTheme('\(hex)', \(isDark))") { _, _ in }
+        webView.callAsyncJavaScript(
+            "window.applyTheme(hex, isDark)",
+            arguments: ["hex": hex, "isDark": isDark],
+            in: nil,
+            in: .page
+        ) { _ in }
     }
 
     // MARK: - Panel Protocol
