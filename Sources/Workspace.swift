@@ -339,6 +339,9 @@ extension Workspace {
                 backHistoryURLStrings: historySnapshot.backHistoryURLStrings,
                 forwardHistoryURLStrings: historySnapshot.forwardHistoryURLStrings
             )
+        case .gitGraph:
+            terminalSnapshot = nil
+            browserSnapshot = nil
         }
 
         return SessionPanelSnapshot(
@@ -513,6 +516,8 @@ extension Workspace {
             }
             applySessionPanelMetadata(snapshot, toPanelId: browserPanel.id)
             return browserPanel.id
+        case .gitGraph:
+            return nil
         }
     }
 
@@ -984,6 +989,7 @@ final class Workspace: Identifiable, ObservableObject {
     private enum SurfaceKind {
         static let terminal = "terminal"
         static let browser = "browser"
+        static let gitGraph = "gitGraph"
     }
 
     // MARK: - Initialization
@@ -1317,6 +1323,8 @@ final class Workspace: Identifiable, ObservableObject {
             return SurfaceKind.terminal
         case .browser:
             return SurfaceKind.browser
+        case .gitGraph:
+            return SurfaceKind.gitGraph
         }
     }
 
