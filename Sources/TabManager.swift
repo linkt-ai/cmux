@@ -2256,6 +2256,34 @@ class TabManager: ObservableObject {
         )
     }
 
+    // MARK: - Git Graph
+
+    /// Open a git graph panel in a specific workspace.
+    @discardableResult
+    func openGitGraph(inWorkspace tabId: UUID, repoPath: String) -> UUID? {
+        guard let workspace = tabs.first(where: { $0.id == tabId }) else { return nil }
+        if selectedTabId != tabId {
+            selectedTabId = tabId
+        }
+        guard let paneId = workspace.bonsplitController.focusedPaneId ?? workspace.bonsplitController.allPaneIds.first,
+              let gitGraphPanel = workspace.newGitGraphSurface(
+                  inPane: paneId,
+                  repoPath: repoPath,
+                  focus: true
+              ) else {
+            return nil
+        }
+        rememberFocusedSurface(tabId: tabId, surfaceId: gitGraphPanel.id)
+        return gitGraphPanel.id
+    }
+
+    /// Open a git graph panel in the currently focused workspace.
+    @discardableResult
+    func openGitGraph(repoPath: String) -> UUID? {
+        guard let tabId = selectedTabId else { return nil }
+        return openGitGraph(inWorkspace: tabId, repoPath: repoPath)
+    }
+
     /// Reopen the most recently closed browser panel (Cmd+Shift+T).
     /// No-op when no browser panel restore snapshot is available.
     @discardableResult
