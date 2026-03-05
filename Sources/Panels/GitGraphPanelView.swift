@@ -1,14 +1,10 @@
 import SwiftUI
-import WebKit
 
 struct GitGraphPanelView: View {
     @ObservedObject var panel: GitGraphPanel
     let isFocused: Bool
     let isVisibleInUI: Bool
     let portalPriority: Int
-
-    @State private var focusFlashOpacity: Double = 0.0
-    @State private var focusFlashAnimationGeneration: Int = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,16 +15,7 @@ struct GitGraphPanelView: View {
             )
             .id(panel.id)
         }
-        .overlay {
-            RoundedRectangle(cornerRadius: FocusFlashPattern.ringCornerRadius)
-                .stroke(cmuxAccentColor().opacity(focusFlashOpacity), lineWidth: 3)
-                .shadow(color: cmuxAccentColor().opacity(focusFlashOpacity * 0.35), radius: 10)
-                .padding(FocusFlashPattern.ringInset)
-                .allowsHitTesting(false)
-        }
-        .onChange(of: panel.focusFlashToken) { _ in
-            runFocusFlashAnimation()
-        }
+        .modifier(FocusFlashModifier(token: panel.focusFlashToken))
     }
 
     // MARK: - Header
@@ -39,11 +26,11 @@ struct GitGraphPanelView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
 
-            Text(repoName)
+            Text(panel.repoName)
                 .font(.system(size: 12, weight: .semibold))
                 .lineLimit(1)
 
-            if let branch = currentBranch {
+            if let branch = panel.currentBranch {
                 Text(branch)
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .padding(.horizontal, 6)
@@ -70,41 +57,6 @@ struct GitGraphPanelView: View {
         .background(Color(nsColor: GhosttyBackgroundTheme.currentColor()))
     }
 
-    // MARK: - Helpers
-
-    private var repoName: String {
-        URL(fileURLWithPath: panel.repoPath).lastPathComponent
-    }
-
-    private var currentBranch: String? {
-        let title = panel.displayTitle
-        guard let openParen = title.firstIndex(of: "("),
-              let closeParen = title.lastIndex(of: ")") else { return nil }
-        let start = title.index(after: openParen)
-        guard start < closeParen else { return nil }
-        return String(title[start..<closeParen])
-    }
-
-    // MARK: - Focus Flash
-
-    private func runFocusFlashAnimation() {
-        focusFlashAnimationGeneration += 1
-        let generation = focusFlashAnimationGeneration
-        focusFlashOpacity = 0
-
-        for segment in FocusFlashPattern.segments {
-            let animation: Animation = segment.curve == .easeIn
-                ? .easeIn(duration: segment.duration)
-                : .easeOut(duration: segment.duration)
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + segment.delay) {
-                guard focusFlashAnimationGeneration == generation else { return }
-                withAnimation(animation) {
-                    focusFlashOpacity = segment.targetOpacity
-                }
-            }
-        }
-    }
 }
 
 // MARK: - WebView Representable

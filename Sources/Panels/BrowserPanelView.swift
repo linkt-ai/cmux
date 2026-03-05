@@ -228,8 +228,6 @@ struct BrowserPanelView: View {
     @State private var omnibarSelectionRange: NSRange = NSRange(location: NSNotFound, length: 0)
     @State private var omnibarHasMarkedText: Bool = false
     @State private var suppressNextFocusLostRevert: Bool = false
-    @State private var focusFlashOpacity: Double = 0.0
-    @State private var focusFlashAnimationGeneration: Int = 0
     @State private var omnibarPillFrame: CGRect = .zero
     @State private var addressBarHeight: CGFloat = 0
     @State private var lastHandledAddressBarFocusRequestId: UUID?
@@ -363,6 +361,7 @@ struct BrowserPanelView: View {
                 .padding(FocusFlashPattern.ringInset)
                 .allowsHitTesting(false)
         }
+        .modifier(FocusFlashModifier(token: panel.focusFlashToken))
         .overlay(alignment: .topLeading) {
             if addressBarFocused, !omnibarState.suggestions.isEmpty, omnibarPillFrame.width > 0 {
                 OmnibarSuggestionsView(
@@ -435,9 +434,6 @@ struct BrowserPanelView: View {
 #if DEBUG
             logBrowserFocusState(event: "view.onAppear")
 #endif
-        }
-        .onChange(of: panel.focusFlashToken) { _ in
-            triggerFocusFlashAnimation()
         }
         .onChange(of: panel.currentURL) { _ in
             let addressWasEmpty = omnibarState.buffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -911,6 +907,7 @@ struct BrowserPanelView: View {
         reason: String,
         isPanelFocusedOverride: Bool? = nil
     ) {
+    private func syncWebViewResponderPolicyWithViewState(reason: String) {
         guard let cmuxWebView = panel.webView as? CmuxWebView else { return }
         let isPanelFocused = isPanelFocusedOverride ?? isFocused
         let next = isPanelFocused && !panel.shouldSuppressWebViewFocus()

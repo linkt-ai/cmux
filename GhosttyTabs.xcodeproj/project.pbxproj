@@ -28,6 +28,7 @@
 		A5001441 /* GitGraphDataProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001451 /* GitGraphDataProviderTests.swift */; };
 		A5001442 /* GitGraphPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001452 /* GitGraphPanelTests.swift */; };
 		A5001420 /* GitGraphDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001430 /* GitGraphDataProvider.swift */; };
+		A5001423 /* FocusFlashModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001433 /* FocusFlashModifier.swift */; };
 		A5001421 /* GitGraphPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001431 /* GitGraphPanel.swift */; };
 		A5001422 /* GitGraphPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001432 /* GitGraphPanelView.swift */; };
 		A5001400 /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001410 /* Panel.swift */; };
@@ -184,6 +185,7 @@
 		A5001430 /* GitGraphDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphDataProvider.swift; sourceTree = "<group>"; };
 		A5001431 /* GitGraphPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/GitGraphPanel.swift; sourceTree = "<group>"; };
 		A5001432 /* GitGraphPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/GitGraphPanelView.swift; sourceTree = "<group>"; };
+		A5001433 /* FocusFlashModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/FocusFlashModifier.swift; sourceTree = "<group>"; };
 		A5001410 /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/Panel.swift; sourceTree = "<group>"; };
 		A5001411 /* TerminalPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/TerminalPanel.swift; sourceTree = "<group>"; };
 		A5001412 /* BrowserPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/BrowserPanel.swift; sourceTree = "<group>"; };
@@ -401,6 +403,7 @@
 				A5001412 /* BrowserPanel.swift */,
 				A5001431 /* GitGraphPanel.swift */,
 				A5001432 /* GitGraphPanelView.swift */,
+				A5001433 /* FocusFlashModifier.swift */,
 				A5001413 /* TerminalPanelView.swift */,
 				A5001414 /* BrowserPanelView.swift */,
 				A5001418 /* MarkdownPanel.swift */,
@@ -679,6 +682,7 @@
 				A5001402 /* BrowserPanel.swift in Sources */,
 				A5001421 /* GitGraphPanel.swift in Sources */,
 				A5001422 /* GitGraphPanelView.swift in Sources */,
+				A5001423 /* FocusFlashModifier.swift in Sources */,
 				A5001403 /* TerminalPanelView.swift in Sources */,
 				A5001404 /* BrowserPanelView.swift in Sources */,
 				A5001420 /* MarkdownPanel.swift in Sources */,
