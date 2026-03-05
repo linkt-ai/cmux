@@ -41,6 +41,8 @@ struct PanelContentView: View {
                     onRequestPanelFocus: onRequestPanelFocus
                 )
             }
+        case .gitGraph:
+            EmptyView()
         }
     }
 }
