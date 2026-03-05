@@ -1234,8 +1234,8 @@ private enum BrowserInsecureHTTPNavigationIntent {
 
 @MainActor
 final class BrowserPanel: Panel, ObservableObject {
-    /// Shared process pool for cookie sharing across all browser panels
-    private static let sharedProcessPool = WKProcessPool()
+    /// Shared process pool for cookie sharing across all web panels
+    static let sharedProcessPool = WKProcessPool()
 
     static let telemetryHookBootstrapScriptSource = """
     (() => {

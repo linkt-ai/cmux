@@ -1317,6 +1317,10 @@ final class Workspace: Identifiable, ObservableObject {
         panels[panelId] as? BrowserPanel
     }
 
+    func gitGraphPanel(for panelId: UUID) -> GitGraphPanel? {
+        panels[panelId] as? GitGraphPanel
+    }
+
     private func surfaceKind(for panel: any Panel) -> String {
         switch panel.panelType {
         case .terminal:
@@ -2155,6 +2159,71 @@ final class Workspace: Identifiable, ObservableObject {
         installBrowserPanelSubscription(browserPanel)
 
         return browserPanel
+    }
+
+    // MARK: - Git Graph Panel Factory
+
+    @discardableResult
+    func newGitGraphSurface(
+        inPane paneId: PaneID,
+        repoPath: String,
+        focus: Bool? = nil
+    ) -> GitGraphPanel? {
+        let shouldFocusNewTab = focus ?? (bonsplitController.focusedPaneId == paneId)
+
+        let gitGraphPanel = GitGraphPanel(workspaceId: id, repoPath: repoPath)
+        panels[gitGraphPanel.id] = gitGraphPanel
+        panelTitles[gitGraphPanel.id] = gitGraphPanel.displayTitle
+
+        guard let newTabId = bonsplitController.createTab(
+            title: gitGraphPanel.displayTitle,
+            icon: gitGraphPanel.displayIcon,
+            kind: SurfaceKind.gitGraph,
+            isDirty: false,
+            isLoading: false,
+            isPinned: false,
+            inPane: paneId
+        ) else {
+            panels.removeValue(forKey: gitGraphPanel.id)
+            panelTitles.removeValue(forKey: gitGraphPanel.id)
+            return nil
+        }
+
+        surfaceIdToPanelId[newTabId] = gitGraphPanel.id
+
+        if shouldFocusNewTab {
+            bonsplitController.focusPane(paneId)
+            bonsplitController.selectTab(newTabId)
+            gitGraphPanel.focus()
+            applyTabSelection(tabId: newTabId, inPane: paneId)
+        }
+
+        installGitGraphPanelSubscription(gitGraphPanel)
+
+        return gitGraphPanel
+    }
+
+    private func installGitGraphPanelSubscription(_ gitGraphPanel: GitGraphPanel) {
+        let subscription = gitGraphPanel.$displayTitle
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self, weak gitGraphPanel] newTitle in
+                guard let self,
+                      let gitGraphPanel,
+                      let tabId = self.surfaceIdFromPanelId(gitGraphPanel.id) else { return }
+                if self.panelTitles[gitGraphPanel.id] != newTitle {
+                    self.panelTitles[gitGraphPanel.id] = newTitle
+                }
+                let resolvedTitle = self.resolvedPanelTitle(panelId: gitGraphPanel.id, fallback: newTitle)
+                guard let existing = self.bonsplitController.tab(tabId),
+                      existing.title != resolvedTitle else { return }
+                self.bonsplitController.updateTab(
+                    tabId,
+                    title: resolvedTitle,
+                    hasCustomTitle: self.panelCustomTitles[gitGraphPanel.id] != nil
+                )
+            }
+        panelSubscriptions[gitGraphPanel.id] = subscription
     }
 
     /// Close a panel.
