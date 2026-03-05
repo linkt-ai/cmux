@@ -58,8 +58,14 @@ final class GitGraphDataProvider: @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "com.cmux.git-graph", qos: .utility)
 
-    /// Path to the git binary. Resolved once on first use.
-    private lazy var gitPath: String? = {
+    /// Path to the git binary. Resolved eagerly in init() for thread safety.
+    private let gitPath: String?
+
+    init() {
+        gitPath = Self.resolveGitPath()
+    }
+
+    private static func resolveGitPath() -> String? {
         // macOS ships git at /usr/bin/git (Xcode CLT shim).
         if FileManager.default.fileExists(atPath: "/usr/bin/git") {
             return "/usr/bin/git"
@@ -73,14 +79,14 @@ final class GitGraphDataProvider: @unchecked Sendable {
         proc.standardError = FileHandle.nullDevice
         do {
             try proc.run()
-            proc.waitUntilExit()
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            proc.waitUntilExit()
             let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
             return (path?.isEmpty == false) ? path : nil
         } catch {
             return nil
         }
-    }()
+    }
 
     // MARK: - Public API
 
@@ -145,7 +151,7 @@ final class GitGraphDataProvider: @unchecked Sendable {
         // Fields separated by \x1E (record separator), records separated by \x00 (null).
         let logFormat = "%H\u{1E}%h\u{1E}%P\u{1E}%an\u{1E}%ae\u{1E}%aI\u{1E}%s\u{1E}%B%x00"
         let commits: [GitCommit]
-        switch runGit(git, args: ["log", "-n", "100", "--format=\(logFormat)"], cwd: repoPath) {
+        switch runGit(git, args: ["log", "--all", "--topo-order", "-n", "100", "--format=\(logFormat)"], cwd: repoPath) {
         case .success(let output):
             commits = parseCommits(output)
         case .failure:
@@ -191,16 +197,20 @@ final class GitGraphDataProvider: @unchecked Sendable {
 
         do {
             try process.run()
-            process.waitUntilExit()
         } catch {
             return .failure(.processError(error.localizedDescription))
         }
+
+        // Read pipe data before waitUntilExit to avoid deadlock when output
+        // exceeds the pipe buffer (~64KB). The process blocks writing if the
+        // buffer is full, while waitUntilExit blocks until the process exits.
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
 
         guard process.terminationStatus == 0 else {
             return .failure(.processError("git \(args.first ?? "") exited with status \(process.terminationStatus)"))
         }
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8) ?? ""
         return .success(output)
     }

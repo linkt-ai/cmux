@@ -122,6 +122,11 @@ final class GitGraphDataProviderTests: XCTestCase {
 
     var provider: GitGraphDataProvider!
 
+    lazy var repoPath: String = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()  // cmuxTests/
+        .deletingLastPathComponent()  // project root
+        .path
+
     override func setUp() {
         super.setUp()
         provider = GitGraphDataProvider()
@@ -131,10 +136,6 @@ final class GitGraphDataProviderTests: XCTestCase {
 
     func testFetchGraphDataFromCurrentRepo() {
         let expectation = expectation(description: "fetch completes")
-        let repoPath = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()  // cmuxTests/
-            .deletingLastPathComponent()  // project root
-            .path
 
         provider.fetchGraphData(repoPath: repoPath) { result in
             switch result {
