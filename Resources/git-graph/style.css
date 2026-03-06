@@ -54,8 +54,11 @@ body {
   font-size: 10px;
   color: var(--secondary-color);
   white-space: nowrap;
-  margin-left: auto;
+  flex-shrink: 0;
   padding-left: 12px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Ref label pills */
@@ -67,6 +70,10 @@ body {
   border-radius: 6px;
   margin-right: 4px;
   white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .ref-branch {

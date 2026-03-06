@@ -267,7 +267,7 @@ final class GitGraphPanel: Panel, ObservableObject {
 
     // MARK: - JS→Swift Message Handling
 
-    private func handleScriptMessage(_ message: WKScriptMessage) {
+    fileprivate func handleScriptMessage(_ message: WKScriptMessage) {
         guard let body = message.body as? [String: Any],
               let action = body["action"] as? String else { return }
         handleAction(action, body: body)

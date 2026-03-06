@@ -34,6 +34,7 @@
       root.style.setProperty("--accent-color", "#0091FF");
       root.style.setProperty("--ref-branch-bg", "rgba(0,145,255,0.15)");
       root.style.setProperty("--ref-branch-border", "#0091FF");
+      root.style.setProperty("--ref-tag-bg", "rgba(128,128,128,0.1)");
       root.style.setProperty("--ref-tag-border", "#808080");
     } else {
       root.style.setProperty("--commit-hash-color", "#0550ae");
@@ -42,6 +43,7 @@
       root.style.setProperty("--accent-color", "#0088FF");
       root.style.setProperty("--ref-branch-bg", "rgba(0,136,255,0.1)");
       root.style.setProperty("--ref-branch-border", "#0088FF");
+      root.style.setProperty("--ref-tag-bg", "rgba(101,109,118,0.08)");
       root.style.setProperty("--ref-tag-border", "#656d76");
     }
   };
@@ -138,7 +140,7 @@
     // activeLanes[laneIndex] = hash of commit that "owns" this lane
     var activeLanes = [];
     var commitLanes = new Array(commits.length);
-    // parentLanes[i] = array of { parentIndex, lane } for drawing lines
+    // parentLanes[i] = array of { parentHash, lane, inWindow } for drawing lines
     var parentLanes = new Array(commits.length);
 
     for (var ci = 0; ci < commits.length; ci++) {
@@ -149,8 +151,12 @@
       // Check if this commit is already expected in a lane
       for (var li = 0; li < activeLanes.length; li++) {
         if (activeLanes[li] === commit.hash) {
-          myLane = li;
-          break;
+          if (myLane === -1) {
+            myLane = li;
+          } else {
+            // Duplicate lane pointing to same commit — free it
+            activeLanes[li] = null;
+          }
         }
       }
 
@@ -165,19 +171,31 @@
       // Process parents
       var pLanes = [];
       if (parents.length > 0) {
+        var firstParentInWindow = hashToIndex.hasOwnProperty(parents[0]);
         // First parent continues in the same lane
-        activeLanes[myLane] = parents[0];
-        pLanes.push({ parentHash: parents[0], lane: myLane });
+        if (firstParentInWindow) {
+          activeLanes[myLane] = parents[0];
+        } else {
+          // Parent is outside the window — free the lane
+          activeLanes[myLane] = null;
+        }
+        pLanes.push({ parentHash: parents[0], lane: myLane, inWindow: firstParentInWindow });
 
         // Additional parents (merge) get their own lanes if not already active
         for (var pi = 1; pi < parents.length; pi++) {
           var pHash = parents[pi];
-          var pLane = findLane(activeLanes, pHash);
-          if (pLane === -1) {
-            pLane = firstFreeLane(activeLanes);
-            activeLanes[pLane] = pHash;
+          var parentInWindow = hashToIndex.hasOwnProperty(pHash);
+          if (parentInWindow) {
+            var pLane = findLane(activeLanes, pHash);
+            if (pLane === -1) {
+              pLane = firstFreeLane(activeLanes);
+              activeLanes[pLane] = pHash;
+            }
+            pLanes.push({ parentHash: pHash, lane: pLane, inWindow: true });
+          } else {
+            // Don't allocate a lane for parents outside the window
+            pLanes.push({ parentHash: pHash, lane: myLane, inWindow: false });
           }
-          pLanes.push({ parentHash: pHash, lane: pLane });
         }
       } else {
         // Root commit — free the lane
@@ -221,6 +239,12 @@
   }
 
   function createSvg(commits, layout) {
+    // Build hash → index lookup for fast parent resolution
+    var hashToIndex = {};
+    for (var hi = 0; hi < commits.length; hi++) {
+      hashToIndex[commits[hi].hash] = hi;
+    }
+
     var svgWidth = (layout.maxLane + 1) * LANE_WIDTH + LEFT_PADDING * 2;
     var svgHeight = commits.length * ROW_HEIGHT;
 
@@ -228,6 +252,10 @@
     svg.setAttribute("width", svgWidth);
     svg.setAttribute("height", svgHeight);
     svg.setAttribute("class", "graph-svg");
+
+    // Add gradient definition for fade-out lines
+    var defs = document.createElementNS(SVG_NS, "defs");
+    svg.appendChild(defs);
 
     // Draw branch lines first (behind nodes)
     for (var i = 0; i < commits.length; i++) {
@@ -237,30 +265,56 @@
       for (var p = 0; p < pLanes.length; p++) {
         var parentHash = pLanes[p].parentHash;
         var parentLane = pLanes[p].lane;
+        var inWindow = pLanes[p].inWindow;
 
-        // Find parent row index
-        var parentIndex = -1;
-        for (var j = i + 1; j < commits.length; j++) {
-          if (commits[j].hash === parentHash) {
-            parentIndex = j;
-            break;
-          }
+        var color = laneColor(myLane);
+
+        if (!inWindow) {
+          // Parent is outside the window — draw a short fade-out line
+          var fx = laneX(myLane);
+          var fy = rowY(i);
+          var fadeLen = ROW_HEIGHT * 1.5;
+
+          var gradId = "fade-" + i + "-" + p;
+          var grad = document.createElementNS(SVG_NS, "linearGradient");
+          grad.setAttribute("id", gradId);
+          grad.setAttribute("x1", "0"); grad.setAttribute("y1", "0");
+          grad.setAttribute("x2", "0"); grad.setAttribute("y2", "1");
+          var stop1 = document.createElementNS(SVG_NS, "stop");
+          stop1.setAttribute("offset", "0%");
+          stop1.setAttribute("stop-color", color);
+          stop1.setAttribute("stop-opacity", "1");
+          var stop2 = document.createElementNS(SVG_NS, "stop");
+          stop2.setAttribute("offset", "100%");
+          stop2.setAttribute("stop-color", color);
+          stop2.setAttribute("stop-opacity", "0");
+          grad.appendChild(stop1);
+          grad.appendChild(stop2);
+          defs.appendChild(grad);
+
+          var fadePath = document.createElementNS(SVG_NS, "path");
+          fadePath.setAttribute("d", "M" + fx + "," + fy + " L" + fx + "," + (fy + fadeLen));
+          fadePath.setAttribute("stroke", "url(#" + gradId + ")");
+          svg.appendChild(fadePath);
+          continue;
         }
-        if (parentIndex === -1) continue;
 
+        // Find parent row index and its actual lane position
+        var parentIndex = hashToIndex[parentHash];
+        if (parentIndex === undefined) continue;
+
+        var actualParentLane = layout.commitLanes[parentIndex];
         var x1 = laneX(myLane);
         var y1 = rowY(i);
-        var x2 = laneX(parentLane);
+        var x2 = laneX(actualParentLane);
         var y2 = rowY(parentIndex);
 
         var path = document.createElementNS(SVG_NS, "path");
-        var color = laneColor(p === 0 ? myLane : parentLane);
+        color = laneColor(p === 0 ? myLane : actualParentLane);
 
-        if (myLane === parentLane) {
-          // Straight line
+        if (myLane === actualParentLane) {
           path.setAttribute("d", "M" + x1 + "," + y1 + " L" + x2 + "," + y2);
         } else {
-          // Bezier curve
           var midY = (y1 + y2) / 2;
           path.setAttribute("d",
             "M" + x1 + "," + y1 +
@@ -294,6 +348,24 @@
   // Commit row DOM
   // -------------------------------------------------------
 
+  var MAX_REF_LABEL_LENGTH = 30;
+
+  function shortenRefName(name) {
+    if (name.length <= MAX_REF_LABEL_LENGTH) return name;
+    // Try to shorten: keep first and last segments with ellipsis
+    var parts = name.split("/");
+    if (parts.length >= 3) {
+      // e.g. "jack/oss-5-keyboard-shortcut-menu-bar-command-palette" → "jack/oss-5-keyboard-shor…"
+      var prefix = parts[0] + "/";
+      var rest = parts.slice(1).join("/");
+      if (rest.length > MAX_REF_LABEL_LENGTH - prefix.length) {
+        return prefix + rest.substring(0, MAX_REF_LABEL_LENGTH - prefix.length - 1) + "\u2026";
+      }
+      return prefix + rest;
+    }
+    return name.substring(0, MAX_REF_LABEL_LENGTH - 1) + "\u2026";
+  }
+
   function createRefLabels(refs) {
     var frag = document.createDocumentFragment();
     if (!refs || refs.length === 0) return frag;
@@ -302,19 +374,42 @@
       var ref = refs[i];
       var span = document.createElement("span");
       span.className = "ref-label";
-      span.textContent = ref.name;
+      var displayName = shortenRefName(ref.name);
+      span.textContent = displayName;
+      if (displayName !== ref.name) {
+        span.title = ref.name; // full name on hover
+      }
 
       if (ref.type === "tag") {
         span.classList.add("ref-tag");
       } else {
         span.classList.add("ref-branch");
-        if (ref.isCurrent) {
+        if (ref.isHead) {
           span.classList.add("current");
         }
       }
       frag.appendChild(span);
     }
     return frag;
+  }
+
+  function formatRelativeDate(isoString) {
+    if (!isoString) return "";
+    var date = new Date(isoString);
+    if (isNaN(date.getTime())) return isoString;
+    var now = Date.now();
+    var diffSec = Math.floor((now - date.getTime()) / 1000);
+    if (diffSec < 60) return "just now";
+    var diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return diffMin + (diffMin === 1 ? " minute ago" : " minutes ago");
+    var diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return diffHr + (diffHr === 1 ? " hour ago" : " hours ago");
+    var diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 30) return diffDay + (diffDay === 1 ? " day ago" : " days ago");
+    var diffMonth = Math.floor(diffDay / 30);
+    if (diffMonth < 12) return diffMonth + (diffMonth === 1 ? " month ago" : " months ago");
+    var diffYear = Math.floor(diffDay / 365);
+    return diffYear + (diffYear === 1 ? " year ago" : " years ago");
   }
 
   function createCommitRows(commits) {
@@ -347,7 +442,7 @@
 
       var meta = document.createElement("span");
       meta.className = "commit-meta";
-      meta.textContent = commit.author + " \u00b7 " + commit.relativeDate;
+      meta.textContent = commit.authorName + " \u00b7 " + formatRelativeDate(commit.authorDate);
       row.appendChild(meta);
 
       frag.appendChild(row);
@@ -378,11 +473,26 @@
 
     var commits = data.commits || [];
 
-    // Map refs to their commits for context menu
+    // Map refs to their commits, deduplicating remote tracking branches
     var refsByHash = {};
+    var localBranchNames = {};
     if (data.refs) {
+      // First pass: collect local branch names
       for (var ri = 0; ri < data.refs.length; ri++) {
-        var ref = data.refs[ri];
+        if (data.refs[ri].type === "localBranch") {
+          localBranchNames[data.refs[ri].name] = true;
+        }
+      }
+      // Second pass: add refs, skipping remotes that duplicate a local branch
+      for (var ri2 = 0; ri2 < data.refs.length; ri2++) {
+        var ref = data.refs[ri2];
+        if (ref.type === "remoteBranch") {
+          // Strip "origin/" (or any remote prefix) to check for local duplicate
+          var slashIdx = ref.name.indexOf("/");
+          var shortName = slashIdx !== -1 ? ref.name.substring(slashIdx + 1) : ref.name;
+          if (localBranchNames[shortName]) continue; // skip — local branch already shown
+          if (shortName === "HEAD") continue; // skip origin/HEAD
+        }
         if (!refsByHash[ref.hash]) refsByHash[ref.hash] = [];
         refsByHash[ref.hash].push(ref);
       }
