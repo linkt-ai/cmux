@@ -350,7 +350,7 @@ extension Workspace {
             markdownSnapshot = nil
             gitGraphSnapshot = SessionGitGraphPanelSnapshot(
                 repoPath: gitGraphPanel.repoPath,
-                scrollPositionY: nil
+                scrollPositionY: gitGraphPanel.cachedScrollY
             )
         }
 
@@ -554,6 +554,7 @@ extension Workspace {
             ) else {
                 return nil
             }
+            gitGraphPanel.pendingScrollRestoreY = snapshot.gitGraph?.scrollPositionY
             applySessionPanelMetadata(snapshot, toPanelId: gitGraphPanel.id)
             return gitGraphPanel.id
         }
@@ -1429,12 +1430,15 @@ final class Workspace: Identifiable, ObservableObject {
         panels[panelId] as? BrowserPanel
     }
 
+<<<<<<< HEAD
     func markdownPanel(for panelId: UUID) -> MarkdownPanel? {
         panels[panelId] as? MarkdownPanel
     func gitGraphPanel(for panelId: UUID) -> GitGraphPanel? {
         panels[panelId] as? GitGraphPanel
     }
 
+=======
+>>>>>>> 8e06ff2e (Fix tech debt: dead method, scroll persistence, off-main I/O, unused context key)
     private func surfaceKind(for panel: any Panel) -> String {
         switch panel.panelType {
         case .terminal:
