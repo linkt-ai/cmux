@@ -48,6 +48,11 @@
     }
   };
 
+  // TODO: implement commit detail drawer (next PR)
+  window.showCommitDetail = function (jsonString) {
+    // No-op — stub so the Swift→JS call is explicit, not a silent undefined
+  };
+
   // -------------------------------------------------------
   // JS→Swift bridge
   // -------------------------------------------------------

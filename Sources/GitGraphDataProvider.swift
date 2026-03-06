@@ -47,6 +47,22 @@ enum GitGraphError: Error {
     case processError(String)
 }
 
+/// A single file change from `git show --numstat`.
+struct CommitFileChange: Codable, Equatable {
+    let path: String
+    let additions: Int
+    let deletions: Int
+}
+
+/// Commit detail data including diff stats.
+struct CommitDetailData: Codable, Equatable {
+    let hash: String
+    let files: [CommitFileChange]
+    let totalFiles: Int
+    let totalAdditions: Int
+    let totalDeletions: Int
+}
+
 // MARK: - Provider
 
 /// Fetches and parses git graph data from a repository path.
@@ -142,6 +158,25 @@ final class GitGraphDataProvider: @unchecked Sendable {
             url = url.deletingLastPathComponent()
         }
         return nil
+    }
+
+    /// Fetch diff stat details for a single commit using `git show --numstat`.
+    /// Completion is always called on the main thread.
+    func fetchCommitDetail(repoPath: String, hash: String, completion: @escaping (Result<CommitDetailData, GitGraphError>) -> Void) {
+        queue.async { [self] in
+            guard let git = gitPath else {
+                DispatchQueue.main.async { completion(.failure(.gitNotFound)) }
+                return
+            }
+            let result = runGit(git, args: ["show", "--numstat", "--format=", hash], cwd: repoPath)
+            switch result {
+            case .success(let output):
+                let detail = parseNumstatOutput(hash: hash, output: output)
+                DispatchQueue.main.async { completion(.success(detail)) }
+            case .failure(let err):
+                DispatchQueue.main.async { completion(.failure(err)) }
+            }
+        }
     }
 
     // MARK: - Synchronous fetch (runs on background queue)
@@ -344,6 +379,37 @@ final class GitGraphDataProvider: @unchecked Sendable {
         }
 
         return refs
+    }
+
+    /// Parse `git show --numstat` output into `CommitDetailData`.
+    ///
+    /// Each line: `additions\tdeletions\tpath` (tab-separated).
+    /// Binary files emit `-\t-\tpath` and are mapped to additions: 0, deletions: 0.
+    /// Totals are derived from the parsed file list.
+    private func parseNumstatOutput(hash: String, output: String) -> CommitDetailData {
+        var files: [CommitFileChange] = []
+
+        for line in output.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            let parts = trimmed.components(separatedBy: "\t")
+            guard parts.count >= 3 else { continue }
+
+            let filePath = parts[2...].joined(separator: "\t")
+            let additions = Int(parts[0]) ?? 0
+            let deletions = Int(parts[1]) ?? 0
+
+            files.append(CommitFileChange(path: filePath, additions: additions, deletions: deletions))
+        }
+
+        return CommitDetailData(
+            hash: hash,
+            files: files,
+            totalFiles: files.count,
+            totalAdditions: files.reduce(0) { $0 + $1.additions },
+            totalDeletions: files.reduce(0) { $0 + $1.deletions }
+        )
     }
 
     // MARK: - Remote URL Resolution
