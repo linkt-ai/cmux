@@ -42,7 +42,7 @@ final class GitGraphCommitDetailTests: XCTestCase {
             .path
 
         let expectation = expectation(description: "fetch detail")
-        var result: Result<CommitDetailData, Error>?
+        var result: Result<CommitDetailData, GitGraphError>?
 
         provider.fetchCommitDetail(repoPath: repoPath, hash: "HEAD") { r in
             result = r
