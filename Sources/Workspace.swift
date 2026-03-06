@@ -299,6 +299,7 @@ extension Workspace {
         let terminalSnapshot: SessionTerminalPanelSnapshot?
         let browserSnapshot: SessionBrowserPanelSnapshot?
         let markdownSnapshot: SessionMarkdownPanelSnapshot?
+        let gitGraphSnapshot: SessionGitGraphPanelSnapshot?
         switch panel.panelType {
         case .terminal:
             guard let terminalPanel = panel as? TerminalPanel else { return nil }
@@ -322,6 +323,7 @@ extension Workspace {
             )
             browserSnapshot = nil
             markdownSnapshot = nil
+            gitGraphSnapshot = nil
         case .browser:
             guard let browserPanel = panel as? BrowserPanel else { return nil }
             terminalSnapshot = nil
@@ -340,10 +342,16 @@ extension Workspace {
             terminalSnapshot = nil
             browserSnapshot = nil
             markdownSnapshot = SessionMarkdownPanelSnapshot(filePath: mdPanel.filePath)
+            gitGraphSnapshot = nil
         case .gitGraph:
+            guard let gitGraphPanel = panel as? GitGraphPanel else { return nil }
             terminalSnapshot = nil
             browserSnapshot = nil
             markdownSnapshot = nil
+            gitGraphSnapshot = SessionGitGraphPanelSnapshot(
+                repoPath: gitGraphPanel.repoPath,
+                scrollPositionY: nil
+            )
         }
 
         return SessionPanelSnapshot(
@@ -360,6 +368,7 @@ extension Workspace {
             terminal: terminalSnapshot,
             browser: browserSnapshot,
             markdown: markdownSnapshot
+            gitGraph: gitGraphSnapshot
         )
     }
 
@@ -537,7 +546,16 @@ extension Workspace {
             applySessionPanelMetadata(snapshot, toPanelId: markdownPanel.id)
             return markdownPanel.id
         case .gitGraph:
-            return nil
+            let repoPath = snapshot.gitGraph?.repoPath ?? snapshot.directory ?? currentDirectory
+            guard let gitGraphPanel = newGitGraphSurface(
+                inPane: paneId,
+                repoPath: repoPath,
+                focus: false
+            ) else {
+                return nil
+            }
+            applySessionPanelMetadata(snapshot, toPanelId: gitGraphPanel.id)
+            return gitGraphPanel.id
         }
     }
 

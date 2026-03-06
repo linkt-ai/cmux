@@ -237,6 +237,9 @@ struct SessionBrowserPanelSnapshot: Codable, Sendable {
 
 struct SessionMarkdownPanelSnapshot: Codable, Sendable {
     var filePath: String
+struct SessionGitGraphPanelSnapshot: Codable, Sendable {
+    var repoPath: String
+    var scrollPositionY: Double?
 }
 
 struct SessionPanelSnapshot: Codable, Sendable {
@@ -253,6 +256,7 @@ struct SessionPanelSnapshot: Codable, Sendable {
     var terminal: SessionTerminalPanelSnapshot?
     var browser: SessionBrowserPanelSnapshot?
     var markdown: SessionMarkdownPanelSnapshot?
+    var gitGraph: SessionGitGraphPanelSnapshot?
 }
 
 enum SessionSplitOrientation: String, Codable, Sendable {

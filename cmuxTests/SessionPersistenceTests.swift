@@ -702,6 +702,206 @@ final class SessionPersistenceTests: XCTestCase {
         )
 
         XCTAssertNil(resolved)
+    // MARK: - Git Graph Persistence
+
+    func testSessionGitGraphPanelSnapshotRoundTrip() throws {
+        let source = SessionGitGraphPanelSnapshot(
+            repoPath: "/Users/test/repos/my-project",
+            scrollPositionY: 142.5
+        )
+
+        let data = try JSONEncoder().encode(source)
+        let decoded = try JSONDecoder().decode(SessionGitGraphPanelSnapshot.self, from: data)
+        XCTAssertEqual(decoded.repoPath, source.repoPath)
+        XCTAssertEqual(decoded.scrollPositionY, source.scrollPositionY)
+    }
+
+    func testSessionGitGraphPanelSnapshotDecodesWhenScrollPositionMissing() throws {
+        let json = """
+        {
+          "repoPath": "/Users/test/repos/my-project"
+        }
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(SessionGitGraphPanelSnapshot.self, from: json)
+        XCTAssertEqual(decoded.repoPath, "/Users/test/repos/my-project")
+        XCTAssertNil(decoded.scrollPositionY)
+    }
+
+    func testSessionPanelSnapshotGitGraphFieldRoundTrip() throws {
+        let gitGraphSnapshot = SessionGitGraphPanelSnapshot(
+            repoPath: "/Users/test/repos/my-project",
+            scrollPositionY: nil
+        )
+        let panelSnapshot = SessionPanelSnapshot(
+            id: UUID(),
+            type: .gitGraph,
+            title: "my-project (main)",
+            customTitle: nil,
+            directory: "/Users/test/repos/my-project",
+            isPinned: true,
+            isManuallyUnread: false,
+            gitBranch: nil,
+            listeningPorts: [],
+            ttyName: nil,
+            terminal: nil,
+            browser: nil,
+            gitGraph: gitGraphSnapshot
+        )
+
+        let data = try JSONEncoder().encode(panelSnapshot)
+        let decoded = try JSONDecoder().decode(SessionPanelSnapshot.self, from: data)
+        XCTAssertEqual(decoded.type, .gitGraph)
+        XCTAssertEqual(decoded.gitGraph?.repoPath, "/Users/test/repos/my-project")
+        XCTAssertNil(decoded.terminal)
+        XCTAssertNil(decoded.browser)
+        XCTAssertTrue(decoded.isPinned)
+    }
+
+    func testSessionPanelSnapshotDecodesLegacyWithoutGitGraphField() throws {
+        let panelSnapshot = SessionPanelSnapshot(
+            id: UUID(),
+            type: .terminal,
+            title: "zsh",
+            customTitle: nil,
+            directory: "/tmp",
+            isPinned: false,
+            isManuallyUnread: false,
+            gitBranch: nil,
+            listeningPorts: [],
+            ttyName: nil,
+            terminal: SessionTerminalPanelSnapshot(workingDirectory: "/tmp", scrollback: nil),
+            browser: nil
+        )
+
+        let data = try JSONEncoder().encode(panelSnapshot)
+        let decoded = try JSONDecoder().decode(SessionPanelSnapshot.self, from: data)
+        XCTAssertNil(decoded.gitGraph)
+    }
+
+    func testSaveAndLoadRoundTripPreservesGitGraphPanel() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cmux-session-tests-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let snapshotURL = tempDir.appendingPathComponent("session.json", isDirectory: false)
+        let panelId = UUID()
+        let gitGraphSnapshot = SessionGitGraphPanelSnapshot(
+            repoPath: "/Users/test/repos/my-project",
+            scrollPositionY: nil
+        )
+        let panelSnapshot = SessionPanelSnapshot(
+            id: panelId,
+            type: .gitGraph,
+            title: "my-project (main)",
+            customTitle: "My Graph",
+            directory: "/Users/test/repos/my-project",
+            isPinned: true,
+            isManuallyUnread: false,
+            gitBranch: SessionGitBranchSnapshot(branch: "main", isDirty: false),
+            listeningPorts: [],
+            ttyName: nil,
+            terminal: nil,
+            browser: nil,
+            gitGraph: gitGraphSnapshot
+        )
+
+        let workspace = SessionWorkspaceSnapshot(
+            processTitle: "Terminal",
+            customTitle: nil,
+            customColor: nil,
+            isPinned: false,
+            currentDirectory: "/Users/test",
+            focusedPanelId: panelId,
+            layout: .pane(SessionPaneLayoutSnapshot(panelIds: [panelId], selectedPanelId: panelId)),
+            panels: [panelSnapshot],
+            statusEntries: [],
+            logEntries: [],
+            progress: nil,
+            gitBranch: nil
+        )
+
+        let snapshot = AppSessionSnapshot(
+            version: SessionSnapshotSchema.currentVersion,
+            createdAt: Date().timeIntervalSince1970,
+            windows: [SessionWindowSnapshot(
+                frame: SessionRectSnapshot(x: 0, y: 0, width: 800, height: 600),
+                display: nil,
+                tabManager: SessionTabManagerSnapshot(selectedWorkspaceIndex: 0, workspaces: [workspace]),
+                sidebar: SessionSidebarSnapshot(isVisible: true, selection: .tabs, width: 200)
+            )]
+        )
+
+        XCTAssertTrue(SessionPersistenceStore.save(snapshot, fileURL: snapshotURL))
+
+        let loaded = SessionPersistenceStore.load(fileURL: snapshotURL)
+        XCTAssertNotNil(loaded)
+
+        let loadedPanel = loaded?.windows.first?.tabManager.workspaces.first?.panels.first
+        XCTAssertEqual(loadedPanel?.type, .gitGraph)
+        XCTAssertEqual(loadedPanel?.gitGraph?.repoPath, "/Users/test/repos/my-project")
+        XCTAssertEqual(loadedPanel?.customTitle, "My Graph")
+        XCTAssertTrue(loadedPanel?.isPinned == true)
+        XCTAssertNil(loadedPanel?.terminal)
+        XCTAssertNil(loadedPanel?.browser)
+    }
+
+    func testGitGraphRestoreRepoPathFallbackChain() {
+        // Test 1: gitGraph.repoPath is preferred
+        let snapshot1 = SessionPanelSnapshot(
+            id: UUID(),
+            type: .gitGraph,
+            title: "project",
+            customTitle: nil,
+            directory: "/fallback/dir",
+            isPinned: false,
+            isManuallyUnread: false,
+            gitBranch: nil,
+            listeningPorts: [],
+            ttyName: nil,
+            terminal: nil,
+            browser: nil,
+            gitGraph: SessionGitGraphPanelSnapshot(repoPath: "/preferred/repo", scrollPositionY: nil)
+        )
+        let resolved1 = snapshot1.gitGraph?.repoPath ?? snapshot1.directory ?? "/default"
+        XCTAssertEqual(resolved1, "/preferred/repo")
+
+        // Test 2: falls back to directory when gitGraph is nil
+        let snapshot2 = SessionPanelSnapshot(
+            id: UUID(),
+            type: .gitGraph,
+            title: "project",
+            customTitle: nil,
+            directory: "/fallback/dir",
+            isPinned: false,
+            isManuallyUnread: false,
+            gitBranch: nil,
+            listeningPorts: [],
+            ttyName: nil,
+            terminal: nil,
+            browser: nil
+        )
+        let resolved2 = snapshot2.gitGraph?.repoPath ?? snapshot2.directory ?? "/default"
+        XCTAssertEqual(resolved2, "/fallback/dir")
+
+        // Test 3: falls back to default when both are nil
+        let snapshot3 = SessionPanelSnapshot(
+            id: UUID(),
+            type: .gitGraph,
+            title: "project",
+            customTitle: nil,
+            directory: nil,
+            isPinned: false,
+            isManuallyUnread: false,
+            gitBranch: nil,
+            listeningPorts: [],
+            ttyName: nil,
+            terminal: nil,
+            browser: nil
+        )
+        let resolved3 = snapshot3.gitGraph?.repoPath ?? snapshot3.directory ?? "/default"
+        XCTAssertEqual(resolved3, "/default")
     }
 
     private func makeSnapshot(version: Int) -> AppSessionSnapshot {
