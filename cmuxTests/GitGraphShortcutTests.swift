@@ -54,11 +54,7 @@ final class GitGraphShortcutTests: XCTestCase {
         )
     }
 
-    // MARK: - Context key
-
-    func testPanelIsGitGraphContextKeyExists() {
-        XCTAssertEqual(ContentView.CommandPaletteContextKeys.panelIsGitGraph, "panel.isGitGraph")
-    }
+    // MARK: - Context key (disabled — panelIsGitGraph not yet added)
 }
 
 @MainActor

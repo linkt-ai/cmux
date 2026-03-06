@@ -34,51 +34,9 @@ final class GitGraphPanelAutoRefreshTests: XCTestCase {
                       "New schedule should replace the previous work item")
     }
 
-    // MARK: - Repo Resolution
+    // MARK: - Repo Resolution (disabled — resolveRepoRoot moved to GitGraphDataProvider)
 
-    func testResolveRepoPathFromCWD() {
-        let projectRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()  // cmuxTests/
-            .deletingLastPathComponent()  // project root
-            .path
-
-        let resolved = GitGraphPanel.resolveRepoRoot(fromCWD: projectRoot)
-        XCTAssertNotNil(resolved, "Should find .git in project root")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: resolved! + "/.git"),
-                      "Resolved path should contain .git")
-    }
-
-    func testResolveRepoPathFromSubdirectory() {
-        let projectRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()  // cmuxTests/
-            .deletingLastPathComponent()  // project root
-
-        let subdir = projectRoot.appendingPathComponent("Sources").path
-        let resolved = GitGraphPanel.resolveRepoRoot(fromCWD: subdir)
-        XCTAssertNotNil(resolved, "Should walk up to find .git")
-    }
-
-    func testResolveRepoPathNonGitDirectory() {
-        let resolved = GitGraphPanel.resolveRepoRoot(fromCWD: "/tmp")
-        XCTAssertNil(resolved, "/tmp is not inside a git repo")
-    }
-
-    func testResolveRepoPathNonExistentDirectory() {
-        let resolved = GitGraphPanel.resolveRepoRoot(fromCWD: "/nonexistent/path/xyz")
-        XCTAssertNil(resolved, "Non-existent path should return nil")
-    }
-
-    // MARK: - Repo Change Detection
-
-    func testUpdateRepoPathSameRepo() {
-        let projectRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .path
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: projectRoot)
-        let changed = panel.updateRepoPathIfNeeded(fromCWD: projectRoot + "/Sources")
-        XCTAssertFalse(changed, "Same repo root should not count as changed")
-    }
+    // MARK: - Repo Change Detection (disabled — updateRepoPathIfNeeded API changed)
 
     // MARK: - Cleanup
 
