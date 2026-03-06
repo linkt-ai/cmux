@@ -49,4 +49,29 @@ final class GitGraphPanelTests: XCTestCase {
         panel.triggerFlash()
         XCTAssertEqual(panel.focusFlashToken, before + 1)
     }
+
+    // MARK: - Message Handler Registration
+
+    func testMessageHandlerIsRegistered() {
+        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        panel.close()
+        // If we got here without crash, the handler was registered and removed successfully.
+    }
+
+    func testCloseRemovesMessageHandler() {
+        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        panel.close()
+        // Calling close() twice should not crash (handler already removed).
+        panel.close()
+    }
+
+    // MARK: - Action Handling
+
+    func testCopyHashCopiesToPasteboard() {
+        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        panel.handleAction("copyHash", body: ["hash": "abc123def456"])
+        let copied = NSPasteboard.general.string(forType: .string)
+        XCTAssertEqual(copied, "abc123def456")
+        panel.close()
+    }
 }

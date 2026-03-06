@@ -20,6 +20,8 @@ final class GitGraphPanel: Panel, ObservableObject {
 
     private let dataProvider = GitGraphDataProvider()
     private var navigationDelegate: GitGraphNavigationDelegate?
+    private var scriptMessageProxy: ScriptMessageProxy?
+    private var messageHandlerRegistered = false
     private var cancellables = Set<AnyCancellable>()
 
     weak var workspace: Workspace?
@@ -43,6 +45,9 @@ final class GitGraphPanel: Panel, ObservableObject {
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
         config.defaultWebpagePreferences.allowsContentJavaScript = true
 
+        let proxy = ScriptMessageProxy()
+        config.userContentController.add(proxy, name: "gitGraph")
+
         let webView = CmuxWebView(frame: .zero, configuration: config)
         webView.underPageBackgroundColor = GhosttyBackgroundTheme.currentColor()
 
@@ -51,6 +56,10 @@ final class GitGraphPanel: Panel, ObservableObject {
         }
 
         self.webView = webView
+
+        proxy.delegate = self
+        self.scriptMessageProxy = proxy
+        self.messageHandlerRegistered = true
 
         let navDelegate = GitGraphNavigationDelegate()
         navDelegate.onDidFinish = { [weak self] in
@@ -237,6 +246,12 @@ final class GitGraphPanel: Panel, ObservableObject {
     }
 
     func close() {
+        if messageHandlerRegistered {
+            webView.configuration.userContentController.removeScriptMessageHandler(forName: "gitGraph")
+            messageHandlerRegistered = false
+        }
+        scriptMessageProxy?.delegate = nil
+        scriptMessageProxy = nil
         unfocus()
         webView.stopLoading()
         webView.navigationDelegate = nil
@@ -248,6 +263,81 @@ final class GitGraphPanel: Panel, ObservableObject {
 
     func triggerFlash() {
         focusFlashToken += 1
+    }
+
+    // MARK: - JS→Swift Message Handling
+
+    private func handleScriptMessage(_ message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any],
+              let action = body["action"] as? String else { return }
+        handleAction(action, body: body)
+    }
+
+    func handleAction(_ action: String, body: [String: Any]) {
+        switch action {
+        case "copyHash":
+            guard let hash = body["hash"] as? String else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(hash, forType: .string)
+        case "openInBrowser":
+            guard let hash = body["hash"] as? String else { return }
+            openCommitInBrowser(hash: hash)
+        case "checkoutBranch":
+            guard let branch = body["branch"] as? String else { return }
+            showCheckoutConfirmation(branch: branch)
+        default:
+            break
+        }
+    }
+
+    // MARK: - Open Commit in Browser
+
+    private func openCommitInBrowser(hash: String) {
+        dataProvider.getRemoteURL(repoPath: repoPath) { [weak self] result in
+            guard let self else { return }
+            if case .success(let url) = result {
+                let commitURL = url.appendingPathComponent("commit").appendingPathComponent(hash)
+                NSWorkspace.shared.open(commitURL)
+            }
+        }
+    }
+
+    // MARK: - Checkout Branch
+
+    private func showCheckoutConfirmation(branch: String) {
+        let alert = NSAlert()
+        alert.messageText = "Checkout Branch"
+        alert.informativeText = "Switch to branch \"\(branch)\"?"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Checkout")
+        alert.addButton(withTitle: "Cancel")
+        guard let window = webView.window else { return }
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            self?.performCheckout(branch: branch)
+        }
+    }
+
+    private func performCheckout(branch: String) {
+        dataProvider.checkoutBranch(repoPath: repoPath, branch: branch) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success:
+                self.refresh()
+            case .failure:
+                break
+            }
+        }
+    }
+}
+
+// MARK: - Script Message Proxy
+
+private final class ScriptMessageProxy: NSObject, WKScriptMessageHandler {
+    weak var delegate: GitGraphPanel?
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        delegate?.handleScriptMessage(message)
     }
 }
 

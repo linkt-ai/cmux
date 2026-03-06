@@ -101,6 +101,28 @@ final class GitGraphDataProvider: @unchecked Sendable {
         }
     }
 
+    /// Resolve the remote URL for the repository at `repoPath`.
+    /// Completion is always called on the main thread.
+    func getRemoteURL(repoPath: String, completion: @escaping (Result<URL, GitGraphError>) -> Void) {
+        queue.async { [self] in
+            let result = self.resolveRemoteURL(repoPath: repoPath)
+            DispatchQueue.main.async { completion(result) }
+        }
+    }
+
+    /// Checkout a branch in the repository at `repoPath`.
+    /// Completion is always called on the main thread.
+    func checkoutBranch(repoPath: String, branch: String, completion: @escaping (Result<Void, GitGraphError>) -> Void) {
+        queue.async { [self] in
+            guard let git = gitPath else {
+                DispatchQueue.main.async { completion(.failure(.gitNotFound)) }
+                return
+            }
+            let result = runGit(git, args: ["checkout", branch], cwd: repoPath).map { _ in }
+            DispatchQueue.main.async { completion(result) }
+        }
+    }
+
     // MARK: - Synchronous fetch (runs on background queue)
 
     private func fetchSync(repoPath: String) -> Result<GitGraphData, GitGraphError> {
@@ -301,5 +323,41 @@ final class GitGraphDataProvider: @unchecked Sendable {
         }
 
         return refs
+    }
+
+    // MARK: - Remote URL Resolution
+
+    private func resolveRemoteURL(repoPath: String) -> Result<URL, GitGraphError> {
+        guard let git = gitPath else { return .failure(.gitNotFound) }
+        switch runGit(git, args: ["remote", "get-url", "origin"], cwd: repoPath) {
+        case .success(let output):
+            let raw = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let url = normalizeGitURL(raw) else {
+                return .failure(.processError("Cannot parse remote URL: \(raw)"))
+            }
+            return .success(url)
+        case .failure(let err):
+            return .failure(err)
+        }
+    }
+
+    private func normalizeGitURL(_ raw: String) -> URL? {
+        if raw.hasPrefix("git@") {
+            // SCP-style: git@host:org/repo.git → https://host/org/repo
+            let afterAt = String(raw.dropFirst("git@".count))
+            let stripped: String
+            if let colonIdx = afterAt.firstIndex(of: ":") {
+                stripped = afterAt[afterAt.startIndex..<colonIdx] + "/" + afterAt[afterAt.index(after: colonIdx)...]
+            } else {
+                stripped = afterAt
+            }
+            let cleaned = stripped.hasSuffix(".git") ? String(stripped.dropLast(4)) : stripped
+            return URL(string: "https://\(cleaned)")
+        }
+        var cleaned = raw
+        if cleaned.hasSuffix(".git") {
+            cleaned = String(cleaned.dropLast(4))
+        }
+        return URL(string: cleaned)
     }
 }

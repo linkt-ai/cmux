@@ -47,6 +47,84 @@
   };
 
   // -------------------------------------------------------
+  // JS→Swift bridge
+  // -------------------------------------------------------
+
+  function postMessage(action, data) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.gitGraph) {
+      var msg = { action: action };
+      if (data) {
+        for (var key in data) {
+          if (data.hasOwnProperty(key)) msg[key] = data[key];
+        }
+      }
+      window.webkit.messageHandlers.gitGraph.postMessage(msg);
+    }
+  }
+
+  // -------------------------------------------------------
+  // Context menu
+  // -------------------------------------------------------
+
+  function showContextMenu(x, y, hash, refs) {
+    hideContextMenu();
+    var menu = document.createElement("div");
+    menu.className = "context-menu";
+    menu.style.left = x + "px";
+    menu.style.top = y + "px";
+
+    var copyItem = document.createElement("div");
+    copyItem.className = "context-menu-item";
+    copyItem.textContent = "Copy SHA";
+    copyItem.onclick = function () {
+      postMessage("copyHash", { hash: hash });
+      hideContextMenu();
+    };
+    menu.appendChild(copyItem);
+
+    var openItem = document.createElement("div");
+    openItem.className = "context-menu-item";
+    openItem.textContent = "Open in Browser";
+    openItem.onclick = function () {
+      postMessage("openInBrowser", { hash: hash });
+      hideContextMenu();
+    };
+    menu.appendChild(openItem);
+
+    if (refs && refs.length > 0) {
+      for (var i = 0; i < refs.length; i++) {
+        var ref = refs[i];
+        if (ref.type !== "tag") {
+          (function (branchName) {
+            var checkoutItem = document.createElement("div");
+            checkoutItem.className = "context-menu-item";
+            checkoutItem.textContent = "Checkout " + branchName;
+            checkoutItem.onclick = function () {
+              postMessage("checkoutBranch", { branch: branchName });
+              hideContextMenu();
+            };
+            menu.appendChild(checkoutItem);
+          })(ref.name);
+        }
+      }
+    }
+
+    document.body.appendChild(menu);
+    setTimeout(function () {
+      document.addEventListener("click", hideContextMenu, { once: true });
+    }, 0);
+  }
+
+  function hideContextMenu() {
+    var existing = document.querySelector(".context-menu");
+    if (existing) existing.remove();
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") hideContextMenu();
+  });
+
+  // -------------------------------------------------------
   // Lane assignment (greedy)
   // -------------------------------------------------------
 
@@ -246,6 +324,14 @@
       var commit = commits[i];
       var row = document.createElement("div");
       row.className = "commit-row";
+      row.setAttribute("data-hash", commit.hash);
+
+      row.addEventListener("contextmenu", (function (commitHash, commitRefs) {
+        return function (e) {
+          e.preventDefault();
+          showContextMenu(e.pageX, e.pageY, commitHash, commitRefs || []);
+        };
+      })(commit.hash, commit.refs));
 
       var hash = document.createElement("span");
       hash.className = "commit-hash";
@@ -291,6 +377,20 @@
     }
 
     var commits = data.commits || [];
+
+    // Map refs to their commits for context menu
+    var refsByHash = {};
+    if (data.refs) {
+      for (var ri = 0; ri < data.refs.length; ri++) {
+        var ref = data.refs[ri];
+        if (!refsByHash[ref.hash]) refsByHash[ref.hash] = [];
+        refsByHash[ref.hash].push(ref);
+      }
+    }
+    for (var ci = 0; ci < commits.length; ci++) {
+      commits[ci].refs = refsByHash[commits[ci].hash] || [];
+    }
+
     if (commits.length === 0) return;
 
     container.innerHTML = "";
