@@ -278,6 +278,9 @@ final class GitGraphPanel: Panel, ObservableObject {
         case "checkoutBranch":
             guard let branch = body["branch"] as? String else { return }
             showCheckoutConfirmation(branch: branch)
+        case "commitSelected":
+            guard let hash = body["hash"] as? String else { return }
+            fetchAndPushCommitDetail(hash: hash)
         default:
             break
         }
@@ -291,6 +294,25 @@ final class GitGraphPanel: Panel, ObservableObject {
             if case .success(let url) = result {
                 let commitURL = url.appendingPathComponent("commit").appendingPathComponent(hash)
                 NSWorkspace.shared.open(commitURL)
+            }
+        }
+    }
+
+    // MARK: - Commit Detail
+
+    private func fetchAndPushCommitDetail(hash: String) {
+        dataProvider.fetchCommitDetail(repoPath: repoPath, hash: hash) { [weak self] result in
+            guard let self else { return }
+            if case .success(let detail) = result {
+                let encoder = JSONEncoder()
+                guard let jsonData = try? encoder.encode(detail),
+                      let jsonString = String(data: jsonData, encoding: .utf8) else { return }
+                self.webView.callAsyncJavaScript(
+                    "window.showCommitDetail(jsonString)",
+                    arguments: ["jsonString": jsonString],
+                    in: nil,
+                    in: .page
+                ) { _ in }
             }
         }
     }
