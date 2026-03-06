@@ -8,9 +8,9 @@ final class GitGraphPanel: Panel, ObservableObject {
     let id: UUID
     let panelType: PanelType = .gitGraph
     let webView: CmuxWebView
-    let repoPath: String
+    private(set) var repoPath: String
     let workspaceId: UUID
-    let repoName: String
+    private(set) var repoName: String
 
     @Published var displayTitle: String
     @Published private(set) var currentBranch: String?
@@ -21,6 +21,12 @@ final class GitGraphPanel: Panel, ObservableObject {
     private let dataProvider = GitGraphDataProvider()
     private var navigationDelegate: GitGraphNavigationDelegate?
     private var cancellables = Set<AnyCancellable>()
+
+    weak var workspace: Workspace?
+    var isVisibleInUI: Bool = true
+    private(set) var pendingRefreshWorkItem: DispatchWorkItem?
+    var hasScheduledRefresh: Bool { pendingRefreshWorkItem != nil }
+    private static let refreshDebounceInterval: TimeInterval = 0.5
 
     init(workspaceId: UUID, repoPath: String) {
         self.id = UUID()
@@ -83,6 +89,82 @@ final class GitGraphPanel: Panel, ObservableObject {
 
     func refresh() {
         fetchAndPushData()
+    }
+
+    func scheduleRefresh() {
+        guard isVisibleInUI else { return }
+        pendingRefreshWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingRefreshWorkItem = nil
+            self.fetchAndPushData()
+        }
+        pendingRefreshWorkItem = item
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.refreshDebounceInterval,
+            execute: item
+        )
+    }
+
+    static func resolveRepoRoot(fromCWD cwd: String) -> String? {
+        var url = URL(fileURLWithPath: cwd)
+        let fm = FileManager.default
+        while url.path != "/" {
+            if fm.fileExists(atPath: url.appendingPathComponent(".git").path) {
+                return url.path
+            }
+            url = url.deletingLastPathComponent()
+        }
+        return nil
+    }
+
+    func updateRepoPathIfNeeded(fromCWD cwd: String) -> Bool {
+        guard let newRoot = Self.resolveRepoRoot(fromCWD: cwd) else {
+            return false
+        }
+        if newRoot != repoPath {
+            repoPath = newRoot
+            repoName = URL(fileURLWithPath: newRoot).lastPathComponent
+            displayTitle = repoName
+            return true
+        }
+        return false
+    }
+
+    func installWorkspaceSubscriptions() {
+        guard let workspace else { return }
+
+        // Git graph tracks the focused terminal's branch/CWD.
+        // Non-focused terminal changes are picked up when the user switches focus to them.
+        workspace.$panelGitBranches
+            .map { [weak self] branches -> String? in
+                guard let self,
+                      let focusedId = self.workspace?.focusedPanelId,
+                      self.workspace?.panels[focusedId] is TerminalPanel else { return nil }
+                return branches[focusedId]?.branch
+            }
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.scheduleRefresh()
+            }
+            .store(in: &cancellables)
+
+        workspace.$panelDirectories
+            .compactMap { [weak self] dirs -> String? in
+                guard let self,
+                      let focusedId = self.workspace?.focusedPanelId else { return nil }
+                return dirs[focusedId]
+            }
+            .removeDuplicates()
+            .sink { [weak self] newDir in
+                guard let self else { return }
+                if self.updateRepoPathIfNeeded(fromCWD: newDir) {
+                    self.fetchAndPushData()
+                } else {
+                    self.scheduleRefresh()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func fetchAndPushData() {
@@ -159,6 +241,8 @@ final class GitGraphPanel: Panel, ObservableObject {
         webView.stopLoading()
         webView.navigationDelegate = nil
         navigationDelegate = nil
+        pendingRefreshWorkItem?.cancel()
+        pendingRefreshWorkItem = nil
         cancellables.removeAll()
     }
 
