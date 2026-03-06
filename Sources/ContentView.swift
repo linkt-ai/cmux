@@ -1410,6 +1410,7 @@ struct ContentView: View {
         static let panelName = "panel.name"
         static let panelIsBrowser = "panel.isBrowser"
         static let panelIsTerminal = "panel.isTerminal"
+        static let panelIsGitGraph = "panel.isGitGraph"
         static let panelHasCustomName = "panel.hasCustomName"
         static let panelShouldPin = "panel.shouldPin"
         static let panelHasUnread = "panel.hasUnread"
@@ -3428,6 +3429,7 @@ struct ContentView: View {
             )
             snapshot.setBool(CommandPaletteContextKeys.panelIsBrowser, panelContext.panel.panelType == .browser)
             snapshot.setBool(CommandPaletteContextKeys.panelIsTerminal, panelIsTerminal)
+            snapshot.setBool(CommandPaletteContextKeys.panelIsGitGraph, panelContext.panel.panelType == .gitGraph)
             snapshot.setBool(CommandPaletteContextKeys.panelHasCustomName, workspace.panelCustomTitles[panelId] != nil)
             snapshot.setBool(CommandPaletteContextKeys.panelShouldPin, !workspace.isPanelPinned(panelId))
             let hasUnread = workspace.manualUnreadPanelIds.contains(panelId)
@@ -3537,6 +3539,23 @@ struct ContentView: View {
                 subtitle: constant(String(localized: "command.newBrowserTab.subtitle", defaultValue: "Tab")),
                 shortcutHint: "⌘⇧L",
                 keywords: ["new", "browser", "tab", "web"]
+            )
+        )
+        contributions.append(
+            CommandPaletteCommandContribution(
+                commandId: "palette.openGitGraph",
+                title: constant(String(localized: "command.openGitGraph.title", defaultValue: "Git Graph")),
+                subtitle: constant(String(localized: "command.openGitGraph.subtitle", defaultValue: "Panel")),
+                shortcutHint: "⇧⌘G",
+                keywords: ["git", "graph", "branch", "commit", "history"]
+            )
+        )
+        contributions.append(
+            CommandPaletteCommandContribution(
+                commandId: "palette.newGitGraphTab",
+                title: constant(String(localized: "command.newGitGraphTab.title", defaultValue: "New Tab (Git Graph)")),
+                subtitle: constant(String(localized: "command.newGitGraphTab.subtitle", defaultValue: "Tab")),
+                keywords: ["new", "git", "graph", "tab"]
             )
         )
         contributions.append(
@@ -4098,6 +4117,22 @@ struct ContentView: View {
             // is not blocked by the palette visibility guard.
             DispatchQueue.main.async {
                 _ = AppDelegate.shared?.openBrowserAndFocusAddressBar()
+            }
+        }
+        registry.register(commandId: "palette.openGitGraph") {
+            DispatchQueue.main.async {
+                _ = AppDelegate.shared?.openGitGraph()
+            }
+        }
+        registry.register(commandId: "palette.newGitGraphTab") {
+            DispatchQueue.main.async {
+                guard let appDelegate = AppDelegate.shared,
+                      let manager = appDelegate.tabManager else { return }
+                let repoPath = manager.selectedWorkspace?.currentDirectory ?? ""
+                _ = manager.addTab()
+                DispatchQueue.main.async {
+                    _ = manager.openGitGraph(repoPath: repoPath)
+                }
             }
         }
         registry.register(commandId: "palette.closeTab") {
