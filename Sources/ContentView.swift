@@ -3342,6 +3342,8 @@ struct ContentView: View {
             return .toggleBrowserDeveloperTools
         case "palette.browserConsole":
             return .showBrowserJavaScriptConsole
+        case "palette.openGitGraph":
+            return .openGitGraph
         case "palette.browserSplitRight", "palette.terminalSplitBrowserRight":
             return .splitBrowserRight
         case "palette.browserSplitDown", "palette.terminalSplitBrowserDown":
@@ -4127,12 +4129,11 @@ struct ContentView: View {
         registry.register(commandId: "palette.newGitGraphTab") {
             DispatchQueue.main.async {
                 guard let appDelegate = AppDelegate.shared,
-                      let manager = appDelegate.tabManager else { return }
-                let repoPath = manager.selectedWorkspace?.currentDirectory ?? ""
+                      let manager = appDelegate.tabManager,
+                      let workspace = manager.selectedWorkspace else { return }
+                let repoPath = workspace.currentDirectory
                 _ = manager.addTab()
-                DispatchQueue.main.async {
-                    _ = manager.openGitGraph(repoPath: repoPath)
-                }
+                _ = manager.openGitGraph(repoPath: repoPath)
             }
         }
         registry.register(commandId: "palette.closeTab") {
