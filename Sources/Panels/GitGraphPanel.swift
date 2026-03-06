@@ -27,6 +27,8 @@ final class GitGraphPanel: Panel, ObservableObject {
     weak var workspace: Workspace?
     var isVisibleInUI: Bool = true
     private(set) var pendingRefreshWorkItem: DispatchWorkItem?
+    private(set) var cachedScrollY: Double?
+    var pendingScrollRestoreY: Double?
     var hasScheduledRefresh: Bool { pendingRefreshWorkItem != nil }
     private static let refreshDebounceInterval: TimeInterval = 0.5
 
@@ -115,31 +117,6 @@ final class GitGraphPanel: Panel, ObservableObject {
         )
     }
 
-    static func resolveRepoRoot(fromCWD cwd: String) -> String? {
-        var url = URL(fileURLWithPath: cwd)
-        let fm = FileManager.default
-        while url.path != "/" {
-            if fm.fileExists(atPath: url.appendingPathComponent(".git").path) {
-                return url.path
-            }
-            url = url.deletingLastPathComponent()
-        }
-        return nil
-    }
-
-    func updateRepoPathIfNeeded(fromCWD cwd: String) -> Bool {
-        guard let newRoot = Self.resolveRepoRoot(fromCWD: cwd) else {
-            return false
-        }
-        if newRoot != repoPath {
-            repoPath = newRoot
-            repoName = URL(fileURLWithPath: newRoot).lastPathComponent
-            displayTitle = repoName
-            return true
-        }
-        return false
-    }
-
     func installWorkspaceSubscriptions() {
         guard let workspace else { return }
 
@@ -167,10 +144,17 @@ final class GitGraphPanel: Panel, ObservableObject {
             .removeDuplicates()
             .sink { [weak self] newDir in
                 guard let self else { return }
-                if self.updateRepoPathIfNeeded(fromCWD: newDir) {
-                    self.fetchAndPushData()
-                } else {
-                    self.scheduleRefresh()
+                self.dataProvider.resolveRepoRoot(fromCWD: newDir) { [weak self] newRoot in
+                    guard let self else { return }
+                    guard let newRoot else { self.scheduleRefresh(); return }
+                    if newRoot != self.repoPath {
+                        self.repoPath = newRoot
+                        self.repoName = URL(fileURLWithPath: newRoot).lastPathComponent
+                        self.displayTitle = self.repoName
+                        self.fetchAndPushData()
+                    } else {
+                        self.scheduleRefresh()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -204,7 +188,16 @@ final class GitGraphPanel: Panel, ObservableObject {
             arguments: ["jsonString": jsonString],
             in: nil,
             in: .page
-        ) { _ in }
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.webView.evaluateJavaScript("window.getScrollY()") { result, _ in
+                if let y = result as? Double { self.cachedScrollY = y }
+            }
+            if let restoreY = self.pendingScrollRestoreY {
+                self.pendingScrollRestoreY = nil
+                self.webView.evaluateJavaScript("window.setScrollY(\(restoreY))", completionHandler: nil)
+            }
+        }
     }
 
     // MARK: - Theme

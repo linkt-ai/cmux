@@ -123,6 +123,27 @@ final class GitGraphDataProvider: @unchecked Sendable {
         }
     }
 
+    /// Resolve the git repo root for the given working directory.
+    /// Completion is always called on the main thread.
+    func resolveRepoRoot(fromCWD cwd: String, completion: @escaping (String?) -> Void) {
+        queue.async {
+            let result = Self.resolveRepoRootSync(fromCWD: cwd)
+            DispatchQueue.main.async { completion(result) }
+        }
+    }
+
+    private static func resolveRepoRootSync(fromCWD cwd: String) -> String? {
+        var url = URL(fileURLWithPath: cwd)
+        let fm = FileManager.default
+        while url.path != "/" {
+            if fm.fileExists(atPath: url.appendingPathComponent(".git").path) {
+                return url.path
+            }
+            url = url.deletingLastPathComponent()
+        }
+        return nil
+    }
+
     // MARK: - Synchronous fetch (runs on background queue)
 
     private func fetchSync(repoPath: String) -> Result<GitGraphData, GitGraphError> {
