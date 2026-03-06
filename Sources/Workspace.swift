@@ -348,7 +348,7 @@ extension Workspace {
             browserSnapshot = nil
             gitGraphSnapshot = SessionGitGraphPanelSnapshot(
                 repoPath: gitGraphPanel.repoPath,
-                scrollPositionY: nil
+                scrollPositionY: gitGraphPanel.cachedScrollY
             )
         }
 
@@ -534,6 +534,7 @@ extension Workspace {
             ) else {
                 return nil
             }
+            gitGraphPanel.pendingScrollRestoreY = snapshot.gitGraph?.scrollPositionY
             applySessionPanelMetadata(snapshot, toPanelId: gitGraphPanel.id)
             return gitGraphPanel.id
         }
@@ -1333,10 +1334,6 @@ final class Workspace: Identifiable, ObservableObject {
 
     func browserPanel(for panelId: UUID) -> BrowserPanel? {
         panels[panelId] as? BrowserPanel
-    }
-
-    func gitGraphPanel(for panelId: UUID) -> GitGraphPanel? {
-        panels[panelId] as? GitGraphPanel
     }
 
     private func surfaceKind(for panel: any Panel) -> String {
