@@ -1,6 +1,7 @@
 import Combine
 import WebKit
 import AppKit
+import Bonsplit
 
 @MainActor
 final class GitGraphPanel: Panel, ObservableObject {
@@ -172,8 +173,10 @@ final class GitGraphPanel: Panel, ObservableObject {
                 } else {
                     self.displayTitle = self.repoName
                 }
-            case .failure:
-                break
+            case .failure(let err):
+                #if DEBUG
+                dlog("git-graph: fetchAndPushData failed: \(err)")
+                #endif
             }
         }
     }
@@ -339,8 +342,10 @@ final class GitGraphPanel: Panel, ObservableObject {
             switch result {
             case .success:
                 self.refresh()
-            case .failure:
-                break
+            case .failure(let err):
+                #if DEBUG
+                dlog("git-graph: checkout failed: \(err)")
+                #endif
             }
         }
     }
