@@ -235,6 +235,11 @@ struct SessionBrowserPanelSnapshot: Codable, Sendable {
     var forwardHistoryURLStrings: [String]?
 }
 
+struct SessionGitGraphPanelSnapshot: Codable, Sendable {
+    var repoPath: String
+    var scrollPositionY: Double?
+}
+
 struct SessionPanelSnapshot: Codable, Sendable {
     var id: UUID
     var type: PanelType
@@ -248,6 +253,7 @@ struct SessionPanelSnapshot: Codable, Sendable {
     var ttyName: String?
     var terminal: SessionTerminalPanelSnapshot?
     var browser: SessionBrowserPanelSnapshot?
+    var gitGraph: SessionGitGraphPanelSnapshot?
 }
 
 enum SessionSplitOrientation: String, Codable, Sendable {
