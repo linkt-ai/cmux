@@ -2,6 +2,8 @@
 // Entry points called from Swift via evaluateJavaScript:
 //   window.updateGraph(jsonString) — render commit graph
 //   window.applyTheme(hexColor, isDark) — update theme colors
+//   window.showCommitDetail(jsonString) — show commit detail drawer
+//   window.hideCommitDetail() — hide commit detail drawer
 
 (function () {
   "use strict";
@@ -18,6 +20,44 @@
   var LANE_WIDTH = 12;
   var LEFT_PADDING = 10;
   var NODE_RADIUS = 3;
+
+  // Commit lookup map — populated by updateGraph
+  var commitsByHash = {};
+  var selectedCommitHash = null;
+
+  // -------------------------------------------------------
+  // Color helpers
+  // -------------------------------------------------------
+
+  function hexToRgb(hex) {
+    hex = hex.replace(/^#/, "");
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    var num = parseInt(hex, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+
+  function rgbToHex(r, g, b) {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  function adjustBrightness(hex, percent) {
+    var rgb = hexToRgb(hex);
+    var factor = percent / 100;
+    var r, g, b;
+    if (factor > 0) {
+      r = Math.min(255, Math.round(rgb.r + (255 - rgb.r) * factor));
+      g = Math.min(255, Math.round(rgb.g + (255 - rgb.g) * factor));
+      b = Math.min(255, Math.round(rgb.b + (255 - rgb.b) * factor));
+    } else {
+      var f = 1 + factor;
+      r = Math.max(0, Math.round(rgb.r * f));
+      g = Math.max(0, Math.round(rgb.g * f));
+      b = Math.max(0, Math.round(rgb.b * f));
+    }
+    return rgbToHex(r, g, b);
+  }
 
   // -------------------------------------------------------
   // Theme
@@ -46,12 +86,244 @@
       root.style.setProperty("--ref-tag-bg", "rgba(101,109,118,0.08)");
       root.style.setProperty("--ref-tag-border", "#656d76");
     }
+
+    // Drawer theme properties
+    var drawerBg = isDark ? adjustBrightness(hexColor, 12) : adjustBrightness(hexColor, -6.5);
+    root.style.setProperty("--drawer-bg", drawerBg);
+    root.style.setProperty("--separator-color", isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)");
+    root.style.setProperty("--addition-color", isDark ? "#3fb950" : "#1a7f37");
+    root.style.setProperty("--deletion-color", isDark ? "#f85149" : "#cf222e");
   };
 
-  // TODO: implement commit detail drawer (next PR)
+  // -------------------------------------------------------
+  // Commit detail drawer
+  // -------------------------------------------------------
+
   window.showCommitDetail = function (jsonString) {
-    // No-op — stub so the Swift→JS call is explicit, not a silent undefined
+    var detail;
+    try {
+      if (typeof jsonString === "string") {
+        detail = JSON.parse(jsonString);
+      } else {
+        detail = jsonString;
+      }
+    } catch (e) {
+      console.error("git-graph: detail JSON parse error:", e);
+      return;
+    }
+
+    var commit = commitsByHash[detail.hash];
+    if (!commit) return;
+
+    // Track selected commit
+    selectedCommitHash = detail.hash;
+    updateSelectedRow();
+
+    // Reuse or create drawer
+    var drawer = document.querySelector(".commit-detail-drawer");
+    if (!drawer) {
+      drawer = document.createElement("div");
+      drawer.className = "commit-detail-drawer";
+      document.body.appendChild(drawer);
+    }
+
+    // Build drawer content
+    drawer.innerHTML = "";
+
+    // Close button
+    var closeBtn = document.createElement("button");
+    closeBtn.className = "detail-close-btn";
+    closeBtn.textContent = "\u00d7";
+    closeBtn.onclick = function () { window.hideCommitDetail(); };
+    drawer.appendChild(closeBtn);
+
+    // Header: abbreviated hash
+    drawer.appendChild(buildSection(null, function (sec) {
+      var headerHash = document.createElement("div");
+      headerHash.className = "detail-header-hash";
+      headerHash.textContent = commit.abbreviatedHash;
+      sec.appendChild(headerHash);
+    }));
+
+    // Full hash (copyable)
+    drawer.appendChild(buildSection("SHA", function (sec) {
+      var fullHash = document.createElement("div");
+      fullHash.className = "detail-full-hash";
+      fullHash.textContent = detail.hash;
+      fullHash.onclick = function () {
+        postMessage("copyHash", { hash: detail.hash });
+        showCopiedToast(fullHash);
+      };
+      sec.appendChild(fullHash);
+    }));
+
+    // Author
+    drawer.appendChild(buildSection("AUTHOR", function (sec) {
+      var author = document.createElement("div");
+      author.className = "detail-author";
+      author.textContent = commit.authorName + " <" + commit.authorEmail + ">";
+      sec.appendChild(author);
+    }));
+
+    // Date
+    drawer.appendChild(buildSection("DATE", function (sec) {
+      var dateDiv = document.createElement("div");
+      dateDiv.className = "detail-date";
+      var dateObj = new Date(commit.authorDate);
+      var dateStr = isNaN(dateObj.getTime()) ? commit.authorDate :
+        dateObj.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) +
+        " \u00b7 " + formatRelativeDate(commit.authorDate);
+      dateDiv.textContent = dateStr;
+      sec.appendChild(dateDiv);
+    }));
+
+    // Message
+    drawer.appendChild(buildSection("MESSAGE", function (sec) {
+      var msgDiv = document.createElement("div");
+      msgDiv.className = "detail-message";
+      var fullMsg = commit.fullMessage || commit.message || "";
+      var msgLines = fullMsg.split("\n");
+      if (msgLines.length > 0) {
+        var subject = document.createElement("span");
+        subject.className = "detail-message-subject";
+        subject.textContent = msgLines[0];
+        msgDiv.appendChild(subject);
+        if (msgLines.length > 1) {
+          msgDiv.appendChild(document.createTextNode("\n" + msgLines.slice(1).join("\n")));
+        }
+      }
+      sec.appendChild(msgDiv);
+    }));
+
+    // Files
+    var filesSection = buildSection("FILES", function () {});
+    filesSection.classList.add("detail-files-section");
+
+    var files = detail.files || [];
+    if (files.length === 0) {
+      var noFiles = document.createElement("div");
+      noFiles.className = "detail-files-summary";
+      noFiles.textContent = "No file changes";
+      filesSection.appendChild(noFiles);
+    } else {
+      var summary = document.createElement("div");
+      summary.className = "detail-files-summary";
+      summary.textContent = detail.totalFiles + (detail.totalFiles === 1 ? " file" : " files") +
+        " changed, +" + detail.totalAdditions + " -" + detail.totalDeletions;
+      filesSection.appendChild(summary);
+
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        var fileItem = document.createElement("div");
+        fileItem.className = "detail-file-item";
+
+        var filePath = document.createElement("span");
+        filePath.className = "detail-file-path";
+        filePath.textContent = file.path;
+        filePath.title = file.path;
+        fileItem.appendChild(filePath);
+
+        if (file.additions === 0 && file.deletions === 0) {
+          var binaryLabel = document.createElement("span");
+          binaryLabel.className = "detail-file-additions";
+          binaryLabel.textContent = "binary";
+          fileItem.appendChild(binaryLabel);
+        } else {
+          var additions = document.createElement("span");
+          additions.className = "detail-file-additions";
+          additions.textContent = "+" + file.additions;
+          fileItem.appendChild(additions);
+
+          var deletions = document.createElement("span");
+          deletions.className = "detail-file-deletions";
+          deletions.textContent = "-" + file.deletions;
+          fileItem.appendChild(deletions);
+        }
+
+        filesSection.appendChild(fileItem);
+      }
+    }
+    drawer.appendChild(filesSection);
+
+    // Action buttons
+    var actions = document.createElement("div");
+    actions.className = "detail-actions";
+
+    var copyBtn2 = document.createElement("button");
+    copyBtn2.className = "detail-action-btn";
+    copyBtn2.setAttribute("data-action", "copyHash");
+    copyBtn2.textContent = "Copy Hash";
+    copyBtn2.onclick = function () {
+      postMessage("copyHash", { hash: detail.hash });
+      showCopiedToast(copyBtn2);
+    };
+    actions.appendChild(copyBtn2);
+
+    var openBtn = document.createElement("button");
+    openBtn.className = "detail-action-btn";
+    openBtn.setAttribute("data-action", "openInBrowser");
+    openBtn.textContent = "Open in Browser";
+    openBtn.onclick = function () {
+      postMessage("openInBrowser", { hash: detail.hash });
+    };
+    actions.appendChild(openBtn);
+
+    drawer.appendChild(actions);
+
+    // Animate open
+    requestAnimationFrame(function () {
+      drawer.classList.add("open");
+    });
+
+    // Shift graph container
+    var container = document.getElementById("graph-container");
+    if (container) container.style.marginRight = "320px";
   };
+
+  window.hideCommitDetail = function () {
+    var drawer = document.querySelector(".commit-detail-drawer");
+    if (drawer) {
+      drawer.classList.remove("open");
+    }
+    var container = document.getElementById("graph-container");
+    if (container) container.style.marginRight = "";
+    selectedCommitHash = null;
+    updateSelectedRow();
+  };
+
+  function updateSelectedRow() {
+    var rows = document.querySelectorAll(".commit-row");
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute("data-hash") === selectedCommitHash) {
+        rows[i].classList.add("selected");
+      } else {
+        rows[i].classList.remove("selected");
+      }
+    }
+  }
+
+  function buildSection(label, buildContent) {
+    var section = document.createElement("div");
+    section.className = "detail-section";
+    if (label) {
+      var labelDiv = document.createElement("div");
+      labelDiv.className = "detail-section-label";
+      labelDiv.textContent = label;
+      section.appendChild(labelDiv);
+    }
+    buildContent(section);
+    return section;
+  }
+
+  function showCopiedToast(anchorEl) {
+    var existing = anchorEl.querySelector(".detail-copied-toast");
+    if (existing) existing.remove();
+    var toast = document.createElement("span");
+    toast.className = "detail-copied-toast";
+    toast.textContent = "Copied!";
+    anchorEl.appendChild(toast);
+    setTimeout(function () { toast.remove(); }, 1500);
+  }
 
   // -------------------------------------------------------
   // JS→Swift bridge
@@ -128,20 +400,30 @@
   }
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") hideContextMenu();
+    if (e.key === "Escape") {
+      hideContextMenu();
+      var drawer = document.querySelector(".commit-detail-drawer.open");
+      if (drawer) window.hideCommitDetail();
+    }
+  });
+
+  // Click-outside to close drawer
+  document.addEventListener("click", function (e) {
+    var drawer = document.querySelector(".commit-detail-drawer.open");
+    if (!drawer) return;
+    // If click is inside the drawer, ignore
+    if (drawer.contains(e.target)) return;
+    // If click is on a commit row, let the row click handler manage it
+    var row = e.target.closest(".commit-row");
+    if (row) return;
+    window.hideCommitDetail();
   });
 
   // -------------------------------------------------------
   // Lane assignment (greedy)
   // -------------------------------------------------------
 
-  function assignLanes(commits) {
-    // Build lookup: hash → index
-    var hashToIndex = {};
-    for (var i = 0; i < commits.length; i++) {
-      hashToIndex[commits[i].hash] = i;
-    }
-
+  function assignLanes(commits, hashToIndex) {
     // activeLanes[laneIndex] = hash of commit that "owns" this lane
     var activeLanes = [];
     var commitLanes = new Array(commits.length);
@@ -243,13 +525,7 @@
     return LANE_COLORS[lane % LANE_COLORS.length];
   }
 
-  function createSvg(commits, layout) {
-    // Build hash → index lookup for fast parent resolution
-    var hashToIndex = {};
-    for (var hi = 0; hi < commits.length; hi++) {
-      hashToIndex[commits[hi].hash] = hi;
-    }
-
+  function createSvg(commits, layout, hashToIndex) {
     var svgWidth = (layout.maxLane + 1) * LANE_WIDTH + LEFT_PADDING * 2;
     var svgHeight = commits.length * ROW_HEIGHT;
 
@@ -426,6 +702,14 @@
       row.className = "commit-row";
       row.setAttribute("data-hash", commit.hash);
 
+      // Left-click: open commit detail drawer
+      row.addEventListener("click", (function (commitHash) {
+        return function (e) {
+          if (e.button !== 0) return;
+          postMessage("commitSelected", { hash: commitHash });
+        };
+      })(commit.hash));
+
       row.addEventListener("contextmenu", (function (commitHash, commitRefs) {
         return function (e) {
           e.preventDefault();
@@ -461,6 +745,9 @@
   // -------------------------------------------------------
 
   window.updateGraph = function (jsonString) {
+    // Close drawer if open
+    window.hideCommitDetail();
+
     var container = document.getElementById("graph-container");
     var data;
 
@@ -477,6 +764,12 @@
     }
 
     var commits = data.commits || [];
+
+    // Build commitsByHash lookup
+    commitsByHash = {};
+    for (var ci2 = 0; ci2 < commits.length; ci2++) {
+      commitsByHash[commits[ci2].hash] = commits[ci2];
+    }
 
     // Map refs to their commits, deduplicating remote tracking branches
     var refsByHash = {};
@@ -510,8 +803,14 @@
 
     container.innerHTML = "";
 
+    // Build hash→index lookup once, shared by assignLanes and createSvg
+    var hashToIndex = {};
+    for (var hi = 0; hi < commits.length; hi++) {
+      hashToIndex[commits[hi].hash] = hi;
+    }
+
     // Layout
-    var layout = assignLanes(commits);
+    var layout = assignLanes(commits, hashToIndex);
 
     // Build graph + rows side by side
     var wrapper = document.createElement("div");
@@ -520,7 +819,7 @@
     // SVG column
     var svgCol = document.createElement("div");
     svgCol.className = "graph-svg-col";
-    svgCol.appendChild(createSvg(commits, layout));
+    svgCol.appendChild(createSvg(commits, layout, hashToIndex));
     wrapper.appendChild(svgCol);
 
     // Text column
