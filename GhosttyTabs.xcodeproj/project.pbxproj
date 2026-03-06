@@ -757,6 +757,7 @@
 					A5001442 /* GitGraphPanelTests.swift in Sources */,
 					A5001443 /* GitGraphPanelAutoRefreshTests.swift in Sources */,
 					A5001444 /* GitGraphShortcutTests.swift in Sources */,
+				A5002010 /* GitGraphCommitDetailTests.swift in Sources */,
 				);
 				runOnlyForDeploymentPostprocessing = 0;
 			};
