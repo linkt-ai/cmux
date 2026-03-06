@@ -2,9 +2,7 @@ import SwiftUI
 
 struct GitGraphPanelView: View {
     @ObservedObject var panel: GitGraphPanel
-    let isFocused: Bool
     let isVisibleInUI: Bool
-    let portalPriority: Int
 
     var body: some View {
         VStack(spacing: 0) {

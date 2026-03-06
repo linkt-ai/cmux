@@ -138,91 +138,66 @@
     drawer.appendChild(closeBtn);
 
     // Header: abbreviated hash
-    var headerSection = document.createElement("div");
-    headerSection.className = "detail-section";
-    var headerHash = document.createElement("div");
-    headerHash.className = "detail-header-hash";
-    headerHash.textContent = commit.abbreviatedHash;
-    headerSection.appendChild(headerHash);
-    drawer.appendChild(headerSection);
+    drawer.appendChild(buildSection(null, function (sec) {
+      var headerHash = document.createElement("div");
+      headerHash.className = "detail-header-hash";
+      headerHash.textContent = commit.abbreviatedHash;
+      sec.appendChild(headerHash);
+    }));
 
     // Full hash (copyable)
-    var hashSection = document.createElement("div");
-    hashSection.className = "detail-section";
-    var hashLabel = document.createElement("div");
-    hashLabel.className = "detail-section-label";
-    hashLabel.textContent = "SHA";
-    hashSection.appendChild(hashLabel);
-    var fullHash = document.createElement("div");
-    fullHash.className = "detail-full-hash";
-    fullHash.textContent = detail.hash;
-    fullHash.onclick = function () {
-      postMessage("copyHash", { hash: detail.hash });
-      showCopiedToast(fullHash);
-    };
-    hashSection.appendChild(fullHash);
-    drawer.appendChild(hashSection);
+    drawer.appendChild(buildSection("SHA", function (sec) {
+      var fullHash = document.createElement("div");
+      fullHash.className = "detail-full-hash";
+      fullHash.textContent = detail.hash;
+      fullHash.onclick = function () {
+        postMessage("copyHash", { hash: detail.hash });
+        showCopiedToast(fullHash);
+      };
+      sec.appendChild(fullHash);
+    }));
 
     // Author
-    var authorSection = document.createElement("div");
-    authorSection.className = "detail-section";
-    var authorLabel = document.createElement("div");
-    authorLabel.className = "detail-section-label";
-    authorLabel.textContent = "AUTHOR";
-    authorSection.appendChild(authorLabel);
-    var author = document.createElement("div");
-    author.className = "detail-author";
-    author.textContent = commit.authorName + " <" + commit.authorEmail + ">";
-    authorSection.appendChild(author);
-    drawer.appendChild(authorSection);
+    drawer.appendChild(buildSection("AUTHOR", function (sec) {
+      var author = document.createElement("div");
+      author.className = "detail-author";
+      author.textContent = commit.authorName + " <" + commit.authorEmail + ">";
+      sec.appendChild(author);
+    }));
 
     // Date
-    var dateSection = document.createElement("div");
-    dateSection.className = "detail-section";
-    var dateLabel = document.createElement("div");
-    dateLabel.className = "detail-section-label";
-    dateLabel.textContent = "DATE";
-    dateSection.appendChild(dateLabel);
-    var dateDiv = document.createElement("div");
-    dateDiv.className = "detail-date";
-    var dateObj = new Date(commit.authorDate);
-    var dateStr = isNaN(dateObj.getTime()) ? commit.authorDate :
-      dateObj.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) +
-      " \u00b7 " + formatRelativeDate(commit.authorDate);
-    dateDiv.textContent = dateStr;
-    dateSection.appendChild(dateDiv);
-    drawer.appendChild(dateSection);
+    drawer.appendChild(buildSection("DATE", function (sec) {
+      var dateDiv = document.createElement("div");
+      dateDiv.className = "detail-date";
+      var dateObj = new Date(commit.authorDate);
+      var dateStr = isNaN(dateObj.getTime()) ? commit.authorDate :
+        dateObj.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) +
+        " \u00b7 " + formatRelativeDate(commit.authorDate);
+      dateDiv.textContent = dateStr;
+      sec.appendChild(dateDiv);
+    }));
 
     // Message
-    var msgSection = document.createElement("div");
-    msgSection.className = "detail-section";
-    var msgLabel = document.createElement("div");
-    msgLabel.className = "detail-section-label";
-    msgLabel.textContent = "MESSAGE";
-    msgSection.appendChild(msgLabel);
-    var msgDiv = document.createElement("div");
-    msgDiv.className = "detail-message";
-    var fullMsg = commit.fullMessage || commit.message || "";
-    var msgLines = fullMsg.split("\n");
-    if (msgLines.length > 0) {
-      var subject = document.createElement("span");
-      subject.className = "detail-message-subject";
-      subject.textContent = msgLines[0];
-      msgDiv.appendChild(subject);
-      if (msgLines.length > 1) {
-        msgDiv.appendChild(document.createTextNode("\n" + msgLines.slice(1).join("\n")));
+    drawer.appendChild(buildSection("MESSAGE", function (sec) {
+      var msgDiv = document.createElement("div");
+      msgDiv.className = "detail-message";
+      var fullMsg = commit.fullMessage || commit.message || "";
+      var msgLines = fullMsg.split("\n");
+      if (msgLines.length > 0) {
+        var subject = document.createElement("span");
+        subject.className = "detail-message-subject";
+        subject.textContent = msgLines[0];
+        msgDiv.appendChild(subject);
+        if (msgLines.length > 1) {
+          msgDiv.appendChild(document.createTextNode("\n" + msgLines.slice(1).join("\n")));
+        }
       }
-    }
-    msgSection.appendChild(msgDiv);
-    drawer.appendChild(msgSection);
+      sec.appendChild(msgDiv);
+    }));
 
     // Files
-    var filesSection = document.createElement("div");
-    filesSection.className = "detail-section detail-files-section";
-    var filesLabel = document.createElement("div");
-    filesLabel.className = "detail-section-label";
-    filesLabel.textContent = "FILES";
-    filesSection.appendChild(filesLabel);
+    var filesSection = buildSection("FILES", function () {});
+    filesSection.classList.add("detail-files-section");
 
     var files = detail.files || [];
     if (files.length === 0) {
@@ -325,6 +300,19 @@
         rows[i].classList.remove("selected");
       }
     }
+  }
+
+  function buildSection(label, buildContent) {
+    var section = document.createElement("div");
+    section.className = "detail-section";
+    if (label) {
+      var labelDiv = document.createElement("div");
+      labelDiv.className = "detail-section-label";
+      labelDiv.textContent = label;
+      section.appendChild(labelDiv);
+    }
+    buildContent(section);
+    return section;
   }
 
   function showCopiedToast(anchorEl) {
@@ -435,13 +423,7 @@
   // Lane assignment (greedy)
   // -------------------------------------------------------
 
-  function assignLanes(commits) {
-    // Build lookup: hash → index
-    var hashToIndex = {};
-    for (var i = 0; i < commits.length; i++) {
-      hashToIndex[commits[i].hash] = i;
-    }
-
+  function assignLanes(commits, hashToIndex) {
     // activeLanes[laneIndex] = hash of commit that "owns" this lane
     var activeLanes = [];
     var commitLanes = new Array(commits.length);
@@ -543,13 +525,7 @@
     return LANE_COLORS[lane % LANE_COLORS.length];
   }
 
-  function createSvg(commits, layout) {
-    // Build hash → index lookup for fast parent resolution
-    var hashToIndex = {};
-    for (var hi = 0; hi < commits.length; hi++) {
-      hashToIndex[commits[hi].hash] = hi;
-    }
-
+  function createSvg(commits, layout, hashToIndex) {
     var svgWidth = (layout.maxLane + 1) * LANE_WIDTH + LEFT_PADDING * 2;
     var svgHeight = commits.length * ROW_HEIGHT;
 
@@ -827,8 +803,14 @@
 
     container.innerHTML = "";
 
+    // Build hash→index lookup once, shared by assignLanes and createSvg
+    var hashToIndex = {};
+    for (var hi = 0; hi < commits.length; hi++) {
+      hashToIndex[commits[hi].hash] = hi;
+    }
+
     // Layout
-    var layout = assignLanes(commits);
+    var layout = assignLanes(commits, hashToIndex);
 
     // Build graph + rows side by side
     var wrapper = document.createElement("div");
@@ -837,7 +819,7 @@
     // SVG column
     var svgCol = document.createElement("div");
     svgCol.className = "graph-svg-col";
-    svgCol.appendChild(createSvg(commits, layout));
+    svgCol.appendChild(createSvg(commits, layout, hashToIndex));
     wrapper.appendChild(svgCol);
 
     // Text column
