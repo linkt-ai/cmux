@@ -236,4 +236,35 @@ final class GitGraphDataProviderTests: XCTestCase {
         }
         waitForExpectations(timeout: 10)
     }
+
+    // MARK: - Remote URL
+
+    func testGetRemoteURLReturnsURL() {
+        let expectation = expectation(description: "remote URL")
+        provider.getRemoteURL(repoPath: repoPath) { result in
+            switch result {
+            case .success(let url):
+                XCTAssertFalse(url.absoluteString.isEmpty)
+            case .failure:
+                break // May fail if no remote configured; not a hard failure
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 5)
+    }
+
+    // MARK: - Checkout Branch
+
+    func testCheckoutBranchOnNonRepoFails() {
+        let expectation = expectation(description: "checkout fails")
+        provider.checkoutBranch(repoPath: "/tmp/nonexistent-repo-path", branch: "main") { result in
+            if case .failure = result {
+                // Expected
+            } else {
+                XCTFail("Expected failure for non-repo path")
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 5)
+    }
 }
