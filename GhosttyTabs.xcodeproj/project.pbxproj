@@ -28,6 +28,7 @@
 		A5001441 /* GitGraphDataProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001451 /* GitGraphDataProviderTests.swift */; };
 		A5001442 /* GitGraphPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001452 /* GitGraphPanelTests.swift */; };
 		A5001443 /* GitGraphPanelAutoRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001453 /* GitGraphPanelAutoRefreshTests.swift */; };
+		A5001444 /* GitGraphShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001454 /* GitGraphShortcutTests.swift */; };
 		A5001420 /* GitGraphDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001430 /* GitGraphDataProvider.swift */; };
 		A5001423 /* FocusFlashModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001433 /* FocusFlashModifier.swift */; };
 		A5001421 /* GitGraphPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001431 /* GitGraphPanel.swift */; };
@@ -259,6 +260,7 @@
 				A5001451 /* GitGraphDataProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphDataProviderTests.swift; sourceTree = "<group>"; };
 				A5001452 /* GitGraphPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphPanelTests.swift; sourceTree = "<group>"; };
 				A5001453 /* GitGraphPanelAutoRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphPanelAutoRefreshTests.swift; sourceTree = "<group>"; };
+				A5001454 /* GitGraphShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphShortcutTests.swift; sourceTree = "<group>"; };
 					DA7A10CA710E000000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		DA7A10CA710E000000000002 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		A5001622 /* cmux.sdef */ = {isa = PBXFileReference; lastKnownFileType = text.sdef; path = cmux.sdef; sourceTree = "<group>"; };
@@ -502,6 +504,7 @@
 					A5001451 /* GitGraphDataProviderTests.swift */,
 					A5001452 /* GitGraphPanelTests.swift */,
 					A5001453 /* GitGraphPanelAutoRefreshTests.swift */,
+					A5001454 /* GitGraphShortcutTests.swift */,
 				);
 				path = cmuxTests;
 				sourceTree = "<group>";
@@ -750,6 +753,7 @@
 					A5001441 /* GitGraphDataProviderTests.swift in Sources */,
 					A5001442 /* GitGraphPanelTests.swift in Sources */,
 					A5001443 /* GitGraphPanelAutoRefreshTests.swift in Sources */,
+					A5001444 /* GitGraphShortcutTests.swift in Sources */,
 				);
 				runOnlyForDeploymentPostprocessing = 0;
 			};
