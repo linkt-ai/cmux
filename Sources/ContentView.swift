@@ -1525,7 +1525,7 @@ struct ContentView: View {
         }
     }
 
-    private enum CommandPaletteContextKeys {
+    enum CommandPaletteContextKeys {
         static let hasWorkspace = "workspace.hasSelection"
         static let workspaceName = "workspace.name"
         static let workspaceHasCustomName = "workspace.hasCustomName"
