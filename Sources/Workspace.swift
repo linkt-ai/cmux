@@ -2499,6 +2499,7 @@ final class Workspace: Identifiable, ObservableObject {
         let shouldFocusNewTab = focus ?? (bonsplitController.focusedPaneId == paneId)
 
         let gitGraphPanel = GitGraphPanel(workspaceId: id, repoPath: repoPath)
+        gitGraphPanel.workspace = self
         panels[gitGraphPanel.id] = gitGraphPanel
         panelTitles[gitGraphPanel.id] = gitGraphPanel.displayTitle
 
@@ -2589,6 +2590,7 @@ final class Workspace: Identifiable, ObservableObject {
                 )
             }
         panelSubscriptions[gitGraphPanel.id] = subscription
+        gitGraphPanel.installWorkspaceSubscriptions()
     }
 
     /// Close a panel.
