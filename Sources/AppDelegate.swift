@@ -6726,6 +6726,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return true
         }
 
+        // Open git graph: Cmd+Shift+G
+        if matchShortcut(event: event, shortcut: KeyboardShortcutSettings.shortcut(for: .openGitGraph)) {
+            #if DEBUG
+            dlog("shortcut.action name=openGitGraph window=\(event.windowNumber)")
+            #endif
+            _ = openGitGraph()
+            return true
+        }
+
         // Safari defaults:
         // - Option+Command+I => Show/Toggle Web Inspector
         // - Option+Command+C => Show JavaScript Console
@@ -6924,6 +6933,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         _ = focusBrowserAddressBar(panelId: panelId)
         return panelId
+    }
+
+    @discardableResult
+    func openGitGraph() -> UUID? {
+        guard let manager = tabManager,
+              let workspace = manager.selectedWorkspace else { return nil }
+        let repoPath = workspace.currentDirectory
+        return manager.openGitGraph(repoPath: repoPath)
     }
 
     private func focusBrowserAddressBar(in panel: BrowserPanel) {
