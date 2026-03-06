@@ -71,9 +71,13 @@ final class GitGraphPanelAutoRefreshTests: XCTestCase {
     // MARK: - Repo Change Detection
 
     func testUpdateRepoPathSameRepo() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/Users/test/my-repo")
-        let changed = panel.updateRepoPathIfNeeded(fromCWD: "/Users/test/my-repo/src")
-        XCTAssertNotNil(changed as Bool?)
+        let projectRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .path
+        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: projectRoot)
+        let changed = panel.updateRepoPathIfNeeded(fromCWD: projectRoot + "/Sources")
+        XCTAssertFalse(changed, "Same repo root should not count as changed")
     }
 
     // MARK: - Cleanup
