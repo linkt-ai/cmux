@@ -118,15 +118,8 @@ final class GitGraphDataProvider: @unchecked Sendable {
                 DispatchQueue.main.async { completion(.failure(.gitNotFound)) }
                 return
             }
-            let result = runGit(git, args: ["checkout", branch], cwd: repoPath)
-            DispatchQueue.main.async {
-                switch result {
-                case .success:
-                    completion(.success(()))
-                case .failure(let err):
-                    completion(.failure(err))
-                }
-            }
+            let result = runGit(git, args: ["checkout", branch], cwd: repoPath).map { _ in }
+            DispatchQueue.main.async { completion(result) }
         }
     }
 
@@ -350,10 +343,16 @@ final class GitGraphDataProvider: @unchecked Sendable {
 
     private func normalizeGitURL(_ raw: String) -> URL? {
         if raw.hasPrefix("git@") {
-            let stripped = raw.replacingOccurrences(of: "git@", with: "")
-                .replacingOccurrences(of: ":", with: "/")
-                .replacingOccurrences(of: ".git", with: "")
-            return URL(string: "https://\(stripped)")
+            // SCP-style: git@host:org/repo.git → https://host/org/repo
+            let afterAt = String(raw.dropFirst("git@".count))
+            let stripped: String
+            if let colonIdx = afterAt.firstIndex(of: ":") {
+                stripped = afterAt[afterAt.startIndex..<colonIdx] + "/" + afterAt[afterAt.index(after: colonIdx)...]
+            } else {
+                stripped = afterAt
+            }
+            let cleaned = stripped.hasSuffix(".git") ? String(stripped.dropLast(4)) : stripped
+            return URL(string: "https://\(cleaned)")
         }
         var cleaned = raw
         if cleaned.hasSuffix(".git") {

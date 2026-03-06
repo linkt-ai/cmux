@@ -326,12 +326,6 @@
       row.className = "commit-row";
       row.setAttribute("data-hash", commit.hash);
 
-      row.addEventListener("click", (function (commitHash) {
-        return function () {
-          postMessage("commitSelected", { hash: commitHash });
-        };
-      })(commit.hash));
-
       row.addEventListener("contextmenu", (function (commitHash, commitRefs) {
         return function (e) {
           e.preventDefault();
