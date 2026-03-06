@@ -120,7 +120,7 @@ final class GitGraphPanel: Panel, ObservableObject {
 
     func updateRepoPathIfNeeded(fromCWD cwd: String) -> Bool {
         guard let newRoot = Self.resolveRepoRoot(fromCWD: cwd) else {
-            return !repoPath.isEmpty
+            return false
         }
         if newRoot != repoPath {
             repoPath = newRoot
@@ -134,6 +134,8 @@ final class GitGraphPanel: Panel, ObservableObject {
     func installWorkspaceSubscriptions() {
         guard let workspace else { return }
 
+        // Git graph tracks the focused terminal's branch/CWD.
+        // Non-focused terminal changes are picked up when the user switches focus to them.
         workspace.$panelGitBranches
             .map { [weak self] branches -> String? in
                 guard let self,
