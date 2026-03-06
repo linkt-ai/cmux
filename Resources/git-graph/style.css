@@ -27,6 +27,11 @@ body {
   align-items: center;
   height: 24px;
   gap: 8px;
+  cursor: pointer;
+}
+
+.commit-row:hover {
+  background: var(--ref-branch-bg);
 }
 
 .commit-hash {
@@ -108,4 +113,27 @@ body {
 .graph-svg path {
   fill: none;
   stroke-width: 2;
+}
+
+/* Context menu */
+.context-menu {
+  position: absolute;
+  background: var(--graph-bg);
+  border: 1px solid var(--ref-tag-border);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 160px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.context-menu-item {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--message-color);
+  cursor: pointer;
+}
+
+.context-menu-item:hover {
+  background: var(--ref-branch-bg);
 }
