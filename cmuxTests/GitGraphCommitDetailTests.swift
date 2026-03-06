@@ -34,7 +34,7 @@ final class GitGraphCommitDetailTests: XCTestCase {
 
     // MARK: - Data Provider: fetchCommitDetail
 
-    func testFetchCommitDetailReturnsFileChanges() throws {
+    private func fetchHEADDetail() throws -> CommitDetailData {
         let provider = GitGraphDataProvider()
         let repoPath = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -50,48 +50,22 @@ final class GitGraphCommitDetailTests: XCTestCase {
         }
         wait(for: [expectation], timeout: 10)
 
-        let detail = try result!.get()
+        return try XCTUnwrap(try result?.get())
+    }
+
+    func testFetchCommitDetailReturnsFileChanges() throws {
+        let detail = try fetchHEADDetail()
         XCTAssertFalse(detail.files.isEmpty, "HEAD commit should have changed files")
     }
 
     func testFetchCommitDetailFileHasPath() throws {
-        let provider = GitGraphDataProvider()
-        let repoPath = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .path
-
-        let expectation = expectation(description: "fetch detail")
-        var result: Result<CommitDetailData, Error>?
-
-        provider.fetchCommitDetail(repoPath: repoPath, hash: "HEAD") { r in
-            result = r
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 10)
-
-        let detail = try result!.get()
+        let detail = try fetchHEADDetail()
         let file = detail.files[0]
         XCTAssertFalse(file.path.isEmpty, "File path should not be empty")
     }
 
     func testFetchCommitDetailHasSummary() throws {
-        let provider = GitGraphDataProvider()
-        let repoPath = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .path
-
-        let expectation = expectation(description: "fetch detail")
-        var result: Result<CommitDetailData, Error>?
-
-        provider.fetchCommitDetail(repoPath: repoPath, hash: "HEAD") { r in
-            result = r
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 10)
-
-        let detail = try result!.get()
+        let detail = try fetchHEADDetail()
         XCTAssertGreaterThan(detail.totalFiles, 0)
     }
 

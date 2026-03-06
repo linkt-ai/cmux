@@ -155,10 +155,6 @@ final class GitGraphDataProviderTests: XCTestCase {
 
     func testFetchGraphDataDeliversOnMainThread() {
         let expectation = expectation(description: "fetch completes")
-        let repoPath = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .path
 
         provider.fetchGraphData(repoPath: repoPath) { _ in
             XCTAssertTrue(Thread.isMainThread, "Completion must be on main thread")
@@ -169,10 +165,6 @@ final class GitGraphDataProviderTests: XCTestCase {
 
     func testCommitsHaveExpectedFields() {
         let expectation = expectation(description: "fetch completes")
-        let repoPath = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .path
 
         provider.fetchGraphData(repoPath: repoPath) { result in
             if case .success(let data) = result, let commit = data.commits.first {
@@ -190,10 +182,6 @@ final class GitGraphDataProviderTests: XCTestCase {
 
     func testRefsIncludeLocalBranches() {
         let expectation = expectation(description: "fetch completes")
-        let repoPath = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .path
 
         provider.fetchGraphData(repoPath: repoPath) { result in
             if case .success(let data) = result {

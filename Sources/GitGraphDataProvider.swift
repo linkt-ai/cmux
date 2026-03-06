@@ -47,7 +47,7 @@ enum GitGraphError: Error {
     case processError(String)
 }
 
-/// A single file change from `git show --stat`.
+/// A single file change from `git show --numstat`.
 struct CommitFileChange: Codable, Equatable {
     let path: String
     let additions: Int
@@ -160,7 +160,7 @@ final class GitGraphDataProvider: @unchecked Sendable {
         return nil
     }
 
-    /// Fetch diff stat details for a single commit.
+    /// Fetch diff stat details for a single commit using `git show --numstat`.
     /// Completion is always called on the main thread.
     func fetchCommitDetail(repoPath: String, hash: String, completion: @escaping (Result<CommitDetailData, GitGraphError>) -> Void) {
         queue.async { [self] in
@@ -168,10 +168,10 @@ final class GitGraphDataProvider: @unchecked Sendable {
                 DispatchQueue.main.async { completion(.failure(.gitNotFound)) }
                 return
             }
-            let result = runGit(git, args: ["show", "--stat", "--format=", hash], cwd: repoPath)
+            let result = runGit(git, args: ["show", "--numstat", "--format=", hash], cwd: repoPath)
             switch result {
             case .success(let output):
-                let detail = parseStatOutput(hash: hash, output: output)
+                let detail = parseNumstatOutput(hash: hash, output: output)
                 DispatchQueue.main.async { completion(.success(detail)) }
             case .failure(let err):
                 DispatchQueue.main.async { completion(.failure(err)) }
@@ -381,79 +381,34 @@ final class GitGraphDataProvider: @unchecked Sendable {
         return refs
     }
 
-    /// Parse `git show --stat` output into `CommitDetailData`.
+    /// Parse `git show --numstat` output into `CommitDetailData`.
     ///
-    /// Example output:
-    /// ```
-    ///  Sources/Foo.swift         | 13 +++++++------
-    ///  Tests/Bar.swift           |  5 +++++
-    ///  icon.png                  | Bin 0 -> 1234 bytes
-    ///  2 files changed, 11 insertions(+), 6 deletions(-)
-    /// ```
-    private func parseStatOutput(hash: String, output: String) -> CommitDetailData {
+    /// Each line: `additions\tdeletions\tpath` (tab-separated).
+    /// Binary files emit `-\t-\tpath` and are mapped to additions: 0, deletions: 0.
+    /// Totals are derived from the parsed file list.
+    private func parseNumstatOutput(hash: String, output: String) -> CommitDetailData {
         var files: [CommitFileChange] = []
-        var totalFiles = 0
-        var totalAdditions = 0
-        var totalDeletions = 0
 
-        let lines = output.components(separatedBy: "\n")
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+        for line in output.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
 
-            // Summary line: "N file(s) changed, X insertion(s)(+), Y deletion(s)(-)"
-            if trimmed.contains(" changed") && (trimmed.contains("file") || trimmed.contains("files")) {
-                // Parse numbers from summary
-                let parts = trimmed.components(separatedBy: ", ")
-                for part in parts {
-                    let nums = part.components(separatedBy: .whitespaces)
-                    guard let num = Int(nums.first ?? "") else { continue }
-                    if part.contains("file") {
-                        totalFiles = num
-                    } else if part.contains("insertion") {
-                        totalAdditions = num
-                    } else if part.contains("deletion") {
-                        totalDeletions = num
-                    }
-                }
-                continue
-            }
+            let parts = trimmed.components(separatedBy: "\t")
+            guard parts.count >= 3 else { continue }
 
-            // File stat line: " path/to/file | 5 ++---"  or  " path/to/file | Bin 0 -> 123 bytes"
-            guard let pipeIndex = trimmed.range(of: " | ") else { continue }
-            let filePath = String(trimmed[trimmed.startIndex..<pipeIndex.lowerBound])
-                .trimmingCharacters(in: .whitespaces)
-            let statPart = String(trimmed[pipeIndex.upperBound...])
-                .trimmingCharacters(in: .whitespaces)
+            let filePath = parts[2...].joined(separator: "\t")
+            let additions = Int(parts[0]) ?? 0
+            let deletions = Int(parts[1]) ?? 0
 
-            if statPart.hasPrefix("Bin ") {
-                // Binary file — no +/- counts
-                files.append(CommitFileChange(path: filePath, additions: 0, deletions: 0))
-            } else {
-                // Text file: count + and - characters, or parse the number
-                var additions = 0
-                var deletions = 0
-                for ch in statPart {
-                    if ch == "+" { additions += 1 }
-                    else if ch == "-" { deletions += 1 }
-                }
-                files.append(CommitFileChange(path: filePath, additions: additions, deletions: deletions))
-            }
-        }
-
-        // If we didn't parse a summary line, derive from file list
-        if totalFiles == 0 {
-            totalFiles = files.count
-            totalAdditions = files.reduce(0) { $0 + $1.additions }
-            totalDeletions = files.reduce(0) { $0 + $1.deletions }
+            files.append(CommitFileChange(path: filePath, additions: additions, deletions: deletions))
         }
 
         return CommitDetailData(
             hash: hash,
             files: files,
-            totalFiles: totalFiles,
-            totalAdditions: totalAdditions,
-            totalDeletions: totalDeletions
+            totalFiles: files.count,
+            totalAdditions: files.reduce(0) { $0 + $1.additions },
+            totalDeletions: files.reduce(0) { $0 + $1.deletions }
         )
     }
 
