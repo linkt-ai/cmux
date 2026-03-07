@@ -830,12 +830,12 @@
 
     container.appendChild(wrapper);
   };
-})();
 
-window.getScrollY = function () {
+  window.getScrollY = function () {
     return window.scrollY || document.documentElement.scrollTop || 0;
-};
+  };
 
-window.setScrollY = function (y) {
+  window.setScrollY = function (y) {
     window.scrollTo(0, y);
-};
+  };
+})();

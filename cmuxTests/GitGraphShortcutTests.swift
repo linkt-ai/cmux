@@ -40,7 +40,7 @@ final class GitGraphShortcutTests: XCTestCase {
     }
 
     func testOpenGitGraphConvenienceGetter() {
-        let shortcut = KeyboardShortcutSettings.openGitGraphShortcut()
+        let shortcut = KeyboardShortcutSettings.shortcut(for: .openGitGraph)
         // Should return default when no custom value is stored
         XCTAssertEqual(shortcut.key, "g")
         XCTAssertTrue(shortcut.command)
