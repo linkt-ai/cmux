@@ -26,6 +26,7 @@
 		A5001621 /* AppleScriptSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001620 /* AppleScriptSupport.swift */; };
 		A5002010 /* GitGraphCommitDetailTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5002011 /* GitGraphCommitDetailTests.swift */; };
 		A5002020 /* GitGraphDrawerJSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5002021 /* GitGraphDrawerJSTests.swift */; };
+		B5B7150F /* GitGraphKeyboardNavJSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E0C747 /* GitGraphKeyboardNavJSTests.swift */; };
 		A5001440 /* PanelTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001450 /* PanelTypeTests.swift */; };
 		A5001441 /* GitGraphDataProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001451 /* GitGraphDataProviderTests.swift */; };
 		A5001442 /* GitGraphPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001452 /* GitGraphPanelTests.swift */; };
@@ -260,6 +261,7 @@
 				F8000001A1B2C3D4E5F60718 /* SocketControlPasswordStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketControlPasswordStoreTests.swift; sourceTree = "<group>"; };
 				A5002011 /* GitGraphCommitDetailTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphCommitDetailTests.swift; sourceTree = "<group>"; };
 				A5002021 /* GitGraphDrawerJSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphDrawerJSTests.swift; sourceTree = "<group>"; };
+		B5E0C747 /* GitGraphKeyboardNavJSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphKeyboardNavJSTests.swift; sourceTree = "<group>"; };
 				A5001450 /* PanelTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelTypeTests.swift; sourceTree = "<group>"; };
 				A5001451 /* GitGraphDataProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphDataProviderTests.swift; sourceTree = "<group>"; };
 				A5001452 /* GitGraphPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphPanelTests.swift; sourceTree = "<group>"; };
@@ -506,6 +508,7 @@
 					A5008382 /* CommandPaletteSearchEngineTests.swift */,
 					A5002011 /* GitGraphCommitDetailTests.swift */,
 					A5002021 /* GitGraphDrawerJSTests.swift */,
+					B5E0C747 /* GitGraphKeyboardNavJSTests.swift */,
 					A5001450 /* PanelTypeTests.swift */,
 					A5001451 /* GitGraphDataProviderTests.swift */,
 					A5001452 /* GitGraphPanelTests.swift */,
@@ -762,6 +765,7 @@
 					A5001444 /* GitGraphShortcutTests.swift in Sources */,
 				A5002010 /* GitGraphCommitDetailTests.swift in Sources */,
 				A5002020 /* GitGraphDrawerJSTests.swift in Sources */,
+				B5B7150F /* GitGraphKeyboardNavJSTests.swift in Sources */,
 				);
 				runOnlyForDeploymentPostprocessing = 0;
 			};

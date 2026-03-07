@@ -28,6 +28,8 @@ body {
   height: 24px;
   gap: 8px;
   cursor: pointer;
+  padding-left: 2px;
+  border-left: 2px solid transparent;
 }
 
 .commit-row:hover {
@@ -170,6 +172,12 @@ body {
 /* Selected commit row highlight */
 .commit-row.selected {
     background: var(--ref-branch-bg);
+}
+
+/* Keyboard-focused commit row */
+.commit-row.focused {
+    border-left: 2px solid var(--accent-color);
+    padding-left: 2px;
 }
 
 /* Drawer close button */

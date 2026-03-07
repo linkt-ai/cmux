@@ -4,6 +4,7 @@
 //   window.applyTheme(hexColor, isDark) — update theme colors
 //   window.showCommitDetail(jsonString) — show commit detail drawer
 //   window.hideCommitDetail() — hide commit detail drawer
+//   window.setFocusOnGraph() — initialize keyboard focus on first commit
 
 (function () {
   "use strict";
@@ -24,6 +25,9 @@
   // Commit lookup map — populated by updateGraph
   var commitsByHash = {};
   var selectedCommitHash = null;
+  var focusedCommitIndex = -1;
+  var currentCommits = [];
+  var currentHashToIndex = {};
 
   // -------------------------------------------------------
   // Color helpers
@@ -302,6 +306,21 @@
     }
   }
 
+  function updateFocusedRow() {
+    var rows = document.querySelectorAll(".commit-row");
+    for (var i = 0; i < rows.length; i++) {
+      if (i === focusedCommitIndex) {
+        rows[i].classList.add("focused");
+      } else {
+        rows[i].classList.remove("focused");
+      }
+    }
+    // Scroll focused row into view
+    if (focusedCommitIndex >= 0 && focusedCommitIndex < rows.length) {
+      rows[focusedCommitIndex].scrollIntoView({ block: "nearest" });
+    }
+  }
+
   function buildSection(label, buildContent) {
     var section = document.createElement("div");
     section.className = "detail-section";
@@ -402,8 +421,72 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") {
       hideContextMenu();
+      focusedCommitIndex = -1;
+      updateFocusedRow();
       var drawer = document.querySelector(".commit-detail-drawer.open");
       if (drawer) window.hideCommitDetail();
+      return;
+    }
+
+    if (currentCommits.length === 0) return;
+
+    if (e.key === "ArrowDown" || e.key === "j") {
+      e.preventDefault();
+      if (focusedCommitIndex < 0) {
+        focusedCommitIndex = 0;
+      } else if (focusedCommitIndex < currentCommits.length - 1) {
+        focusedCommitIndex++;
+      }
+      updateFocusedRow();
+      return;
+    }
+
+    if (e.key === "ArrowUp" || e.key === "k") {
+      e.preventDefault();
+      if (focusedCommitIndex > 0) {
+        focusedCommitIndex--;
+        updateFocusedRow();
+      }
+      return;
+    }
+
+    if (e.key === "ArrowLeft") {
+      if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
+        var commit = currentCommits[focusedCommitIndex];
+        if (commit.parents && commit.parents.length >= 2) {
+          var parentIndex = currentHashToIndex[commit.parents[0]];
+          if (parentIndex !== undefined) {
+            focusedCommitIndex = parentIndex;
+            updateFocusedRow();
+          }
+        }
+      }
+      return;
+    }
+
+    if (e.key === "ArrowRight") {
+      if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
+        var commit = currentCommits[focusedCommitIndex];
+        if (commit.parents && commit.parents.length >= 2) {
+          var parentIndex = currentHashToIndex[commit.parents[1]];
+          if (parentIndex !== undefined) {
+            focusedCommitIndex = parentIndex;
+            updateFocusedRow();
+          }
+        }
+      }
+      return;
+    }
+
+    if (e.key === "Enter") {
+      if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
+        var hash = currentCommits[focusedCommitIndex].hash;
+        postMessage("commitSelected", { hash: hash });
+        if (window.__test_onCommitSelected) {
+          window.__test_onCommitSelected(hash);
+        }
+      }
+      return;
     }
   });
 
@@ -765,6 +848,10 @@
 
     var commits = data.commits || [];
 
+    var previousFocusedHash = (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length)
+      ? currentCommits[focusedCommitIndex].hash : null;
+    currentCommits = commits;
+
     // Build commitsByHash lookup
     commitsByHash = {};
     for (var ci2 = 0; ci2 < commits.length; ci2++) {
@@ -808,6 +895,7 @@
     for (var hi = 0; hi < commits.length; hi++) {
       hashToIndex[commits[hi].hash] = hi;
     }
+    currentHashToIndex = hashToIndex;
 
     // Layout
     var layout = assignLanes(commits, hashToIndex);
@@ -829,6 +917,34 @@
     wrapper.appendChild(textCol);
 
     container.appendChild(wrapper);
+
+    // Persist keyboard focus across refresh
+    if (previousFocusedHash) {
+      if (currentHashToIndex.hasOwnProperty(previousFocusedHash)) {
+        focusedCommitIndex = currentHashToIndex[previousFocusedHash];
+      } else {
+        focusedCommitIndex = 0;
+      }
+      updateFocusedRow();
+    }
+  };
+
+  window.setFocusOnGraph = function () {
+    if (focusedCommitIndex < 0 && currentCommits.length > 0) {
+      focusedCommitIndex = 0;
+      updateFocusedRow();
+    }
+  };
+
+  window.__test_getFocusedIndex = function () {
+    return focusedCommitIndex;
+  };
+
+  window.__test_getFocusedHash = function () {
+    if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
+      return currentCommits[focusedCommitIndex].hash;
+    }
+    return null;
   };
 
   window.getScrollY = function () {
