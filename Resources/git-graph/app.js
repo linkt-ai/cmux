@@ -799,9 +799,9 @@
       commits[ci].refs = refsByHash[commits[ci].hash] || [];
     }
 
-    if (commits.length === 0) return;
-
     container.innerHTML = "";
+
+    if (commits.length === 0) return;
 
     // Build hash→index lookup once, shared by assignLanes and createSvg
     var hashToIndex = {};

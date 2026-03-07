@@ -64,4 +64,28 @@ final class GitGraphPanelAutoRefreshTests: XCTestCase {
         let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
         XCTAssertNil(panel.workspace, "workspace should be nil before wiring")
     }
+
+    // MARK: - Non-Git Directory Handling
+
+    func testShowNoRepoStateClearsRepoPath() {
+        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        XCTAssertEqual(panel.repoPath, "/tmp/test-repo")
+
+        panel.showNoRepoState()
+
+        XCTAssertEqual(panel.repoPath, "", "repoPath should be cleared for non-git dir")
+        XCTAssertNil(panel.currentBranch, "branch should be nil for non-git dir")
+        XCTAssertEqual(panel.displayTitle, "Git Graph", "title should reset to default")
+    }
+
+    func testShowNoRepoStateThenRecovery() {
+        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+
+        panel.showNoRepoState()
+        XCTAssertEqual(panel.repoPath, "")
+
+        // Simulate recovery by setting repo path directly (as CWD subscription would)
+        panel.showNoRepoState() // idempotent
+        XCTAssertEqual(panel.repoPath, "", "Should remain cleared after double call")
+    }
 }

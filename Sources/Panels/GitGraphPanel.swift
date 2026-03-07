@@ -121,21 +121,23 @@ final class GitGraphPanel: Panel, ObservableObject {
     func installWorkspaceSubscriptions() {
         guard let workspace else { return }
 
-        // Git graph tracks the focused terminal's branch/CWD.
-        // Non-focused terminal changes are picked up when the user switches focus to them.
-        workspace.$panelGitBranches
-            .map { [weak self] branches -> String? in
-                guard let self,
-                      let focusedId = self.workspace?.focusedPanelId,
-                      self.workspace?.panels[focusedId] is TerminalPanel else { return nil }
-                return branches[focusedId]?.branch
-            }
-            .removeDuplicates()
+        // React to branch changes — fires on BOTH focus switches and same-terminal changes.
+        // workspace.gitBranch is updated in applyTabSelectionNow (focus change) and
+        // updatePanelGitBranch (same terminal).
+        // No removeDuplicates: the shell re-reports branch state after every command
+        // (even git branch -d, git reset, etc. where branch/dirty don't change).
+        // scheduleRefresh() debounces at 500ms so rapid re-reports are coalesced.
+        workspace.$gitBranch
+            .dropFirst()
             .sink { [weak self] _ in
+                #if DEBUG
+                dlog("git-graph: $gitBranch fired → scheduleRefresh")
+                #endif
                 self?.scheduleRefresh()
             }
             .store(in: &cancellables)
 
+        // React to same-terminal CWD changes (dict value changes).
         workspace.$panelDirectories
             .compactMap { [weak self] dirs -> String? in
                 guard let self,
@@ -145,9 +147,15 @@ final class GitGraphPanel: Panel, ObservableObject {
             .removeDuplicates()
             .sink { [weak self] newDir in
                 guard let self else { return }
+                #if DEBUG
+                dlog("git-graph: $panelDirectories fired, newDir=\(newDir)")
+                #endif
                 self.dataProvider.resolveRepoRoot(fromCWD: newDir) { [weak self] newRoot in
                     guard let self else { return }
-                    guard let newRoot else { self.scheduleRefresh(); return }
+                    guard let newRoot else {
+                        self.showNoRepoState()
+                        return
+                    }
                     if newRoot != self.repoPath {
                         self.repoPath = newRoot
                         self.repoName = URL(fileURLWithPath: newRoot).lastPathComponent
@@ -159,6 +167,63 @@ final class GitGraphPanel: Panel, ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        // React to focus switches — always refresh to pick up new commits/state.
+        // No removeDuplicates: every focus switch should re-evaluate, even if same
+        // terminal/directory. The debounce in scheduleRefresh() coalesces rapid switches.
+        NotificationCenter.default.publisher(for: .ghosttyDidFocusSurface)
+            .sink { [weak self] notification in
+                guard let self,
+                      let workspace = self.workspace,
+                      let surfaceId = notification.userInfo?[GhosttyNotificationKey.surfaceId] as? UUID,
+                      let tabId = notification.userInfo?[GhosttyNotificationKey.tabId] as? UUID,
+                      tabId == workspace.id,
+                      workspace.panels[surfaceId] is TerminalPanel else { return }
+
+                #if DEBUG
+                dlog("git-graph: focusSurface fired, surfaceId=\(surfaceId)")
+                #endif
+
+                guard let newDir = workspace.panelDirectories[surfaceId] else {
+                    self.showNoRepoState()
+                    return
+                }
+                self.dataProvider.resolveRepoRoot(fromCWD: newDir) { [weak self] newRoot in
+                    guard let self else { return }
+                    guard let newRoot else {
+                        self.showNoRepoState()
+                        return
+                    }
+                    if newRoot != self.repoPath {
+                        self.repoPath = newRoot
+                        self.repoName = URL(fileURLWithPath: newRoot).lastPathComponent
+                        self.displayTitle = self.repoName
+                        self.fetchAndPushData()
+                    } else {
+                        // Same repo — still refresh to pick up new commits
+                        self.scheduleRefresh()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Clear the graph when the focused terminal is not in a git repository.
+    func showNoRepoState() {
+        repoPath = ""
+        repoName = ""
+        currentBranch = nil
+        displayTitle = "Git Graph"
+        let emptyData = GitGraphData(
+            commits: [],
+            refs: [],
+            headHash: "",
+            currentBranch: nil,
+            isDirty: false,
+            repoName: "",
+            repoPath: ""
+        )
+        pushDataToJS(emptyData)
     }
 
     private func fetchAndPushData() {
