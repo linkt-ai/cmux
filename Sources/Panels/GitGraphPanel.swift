@@ -1,7 +1,6 @@
 import Combine
 import WebKit
 import AppKit
-import Bonsplit
 
 @MainActor
 final class GitGraphPanel: Panel, ObservableObject {
@@ -150,21 +149,7 @@ final class GitGraphPanel: Panel, ObservableObject {
                 #if DEBUG
                 dlog("git-graph: $panelDirectories fired, newDir=\(newDir)")
                 #endif
-                self.dataProvider.resolveRepoRoot(fromCWD: newDir) { [weak self] newRoot in
-                    guard let self else { return }
-                    guard let newRoot else {
-                        self.showNoRepoState()
-                        return
-                    }
-                    if newRoot != self.repoPath {
-                        self.repoPath = newRoot
-                        self.repoName = URL(fileURLWithPath: newRoot).lastPathComponent
-                        self.displayTitle = self.repoName
-                        self.fetchAndPushData()
-                    } else {
-                        self.scheduleRefresh()
-                    }
-                }
+                self.handleCWDChange(newDir)
             }
             .store(in: &cancellables)
 
@@ -188,24 +173,27 @@ final class GitGraphPanel: Panel, ObservableObject {
                     self.showNoRepoState()
                     return
                 }
-                self.dataProvider.resolveRepoRoot(fromCWD: newDir) { [weak self] newRoot in
-                    guard let self else { return }
-                    guard let newRoot else {
-                        self.showNoRepoState()
-                        return
-                    }
-                    if newRoot != self.repoPath {
-                        self.repoPath = newRoot
-                        self.repoName = URL(fileURLWithPath: newRoot).lastPathComponent
-                        self.displayTitle = self.repoName
-                        self.fetchAndPushData()
-                    } else {
-                        // Same repo — still refresh to pick up new commits
-                        self.scheduleRefresh()
-                    }
-                }
+                self.handleCWDChange(newDir)
             }
             .store(in: &cancellables)
+    }
+
+    private func handleCWDChange(_ newDir: String) {
+        dataProvider.resolveRepoRoot(fromCWD: newDir) { [weak self] newRoot in
+            guard let self else { return }
+            guard let newRoot else {
+                self.showNoRepoState()
+                return
+            }
+            if newRoot != self.repoPath {
+                self.repoPath = newRoot
+                self.repoName = URL(fileURLWithPath: newRoot).lastPathComponent
+                self.displayTitle = self.repoName
+                self.fetchAndPushData()
+            } else {
+                self.scheduleRefresh()
+            }
+        }
     }
 
     /// Clear the graph when the focused terminal is not in a git repository.
@@ -334,7 +322,7 @@ final class GitGraphPanel: Panel, ObservableObject {
         handleAction(action, body: body)
     }
 
-    func handleAction(_ action: String, body: [String: Any]) {
+    private func handleAction(_ action: String, body: [String: Any]) {
         switch action {
         case "copyHash":
             guard let hash = body["hash"] as? String else { return }
