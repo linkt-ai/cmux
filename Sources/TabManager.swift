@@ -2896,6 +2896,13 @@ class TabManager: ObservableObject {
         return openGitGraph(inWorkspace: tabId, repoPath: repoPath)
     }
 
+    /// Create a new workspace (sidebar tab) with a git graph panel.
+    @discardableResult
+    func addGitGraphTab(repoPath: String) -> UUID? {
+        let workspace = addWorkspace(select: true)
+        return openGitGraph(inWorkspace: workspace.id, repoPath: repoPath)
+    }
+
     /// Reopen the most recently closed browser panel (Cmd+Shift+T).
     /// No-op when no browser panel restore snapshot is available.
     @discardableResult

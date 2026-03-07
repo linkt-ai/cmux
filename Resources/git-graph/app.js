@@ -482,7 +482,7 @@
       if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
         var hash = currentCommits[focusedCommitIndex].hash;
         postMessage("commitSelected", { hash: hash });
-        if (window.__test_onCommitSelected) {
+        if (window.__CMUX_TEST_MODE && window.__test_onCommitSelected) {
           window.__test_onCommitSelected(hash);
         }
       }
@@ -936,16 +936,18 @@
     }
   };
 
-  window.__test_getFocusedIndex = function () {
-    return focusedCommitIndex;
-  };
+  if (window.__CMUX_TEST_MODE) {
+    window.__test_getFocusedIndex = function () {
+      return focusedCommitIndex;
+    };
 
-  window.__test_getFocusedHash = function () {
-    if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
-      return currentCommits[focusedCommitIndex].hash;
-    }
-    return null;
-  };
+    window.__test_getFocusedHash = function () {
+      if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
+        return currentCommits[focusedCommitIndex].hash;
+      }
+      return null;
+    };
+  }
 
   window.getScrollY = function () {
     return window.scrollY || document.documentElement.scrollTop || 0;

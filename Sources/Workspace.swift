@@ -2519,7 +2519,7 @@ final class Workspace: Identifiable, ObservableObject {
     ) -> GitGraphPanel? {
         let shouldFocusNewTab = focus ?? (bonsplitController.focusedPaneId == paneId)
 
-        let gitGraphPanel = GitGraphPanel(workspaceId: id, repoPath: repoPath)
+        let gitGraphPanel = GitGraphPanel(repoPath: repoPath)
         gitGraphPanel.workspace = self
         panels[gitGraphPanel.id] = gitGraphPanel
         panelTitles[gitGraphPanel.id] = gitGraphPanel.displayTitle

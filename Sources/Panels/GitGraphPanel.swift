@@ -9,7 +9,6 @@ final class GitGraphPanel: Panel, ObservableObject {
     let panelType: PanelType = .gitGraph
     let webView: CmuxWebView
     private(set) var repoPath: String
-    let workspaceId: UUID
     private(set) var repoName: String
 
     @Published var displayTitle: String
@@ -32,9 +31,8 @@ final class GitGraphPanel: Panel, ObservableObject {
     var hasScheduledRefresh: Bool { pendingRefreshWorkItem != nil }
     private static let refreshDebounceInterval: TimeInterval = 0.5
 
-    init(workspaceId: UUID, repoPath: String) {
+    init(repoPath: String) {
         self.id = UUID()
-        self.workspaceId = workspaceId
         self.repoPath = repoPath
 
         let repoName = URL(fileURLWithPath: repoPath).lastPathComponent
@@ -46,6 +44,15 @@ final class GitGraphPanel: Panel, ObservableObject {
         config.websiteDataStore = .default()
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
         config.defaultWebpagePreferences.allowsContentJavaScript = true
+
+        #if DEBUG
+        let testScript = WKUserScript(
+            source: "window.__CMUX_TEST_MODE = true;",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(testScript)
+        #endif
 
         let proxy = ScriptMessageProxy()
         config.userContentController.add(proxy, name: "gitGraph")
