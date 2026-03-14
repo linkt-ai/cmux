@@ -1,36 +1,29 @@
 """Tests for git-graph JS click handlers and context menu."""
-import os
+from pathlib import Path
 
-RESOURCES = os.path.join(os.path.dirname(__file__), "..", "Resources", "git-graph")
+ROOT = Path(__file__).resolve().parent.parent
+GRAPH_DIR = ROOT / "Resources" / "git-graph"
 
-def read_file(name):
-    with open(os.path.join(RESOURCES, name)) as f:
-        return f.read()
+JS_TEXT = (GRAPH_DIR / "app.js").read_text()
+CSS_TEXT = (GRAPH_DIR / "style.css").read_text()
 
 def test_app_js_has_message_handler_calls():
-    js = read_file("app.js")
-    assert "window.webkit.messageHandlers.gitGraph.postMessage" in js
+    assert "window.webkit.messageHandlers.gitGraph.postMessage" in JS_TEXT
 
 def test_app_js_has_context_menu():
-    js = read_file("app.js")
-    assert "context-menu" in js
+    assert "context-menu" in JS_TEXT
 
 def test_app_js_has_copy_hash_action():
-    js = read_file("app.js")
-    assert "copyHash" in js
+    assert "copyHash" in JS_TEXT
 
 def test_app_js_has_open_in_browser_action():
-    js = read_file("app.js")
-    assert "openInBrowser" in js
+    assert "openInBrowser" in JS_TEXT
 
 def test_app_js_has_checkout_branch_action():
-    js = read_file("app.js")
-    assert "checkoutBranch" in js
+    assert "checkoutBranch" in JS_TEXT
 
 def test_style_css_has_context_menu_styles():
-    css = read_file("style.css")
-    assert ".context-menu" in css
+    assert ".context-menu" in CSS_TEXT
 
 def test_commit_row_has_data_hash():
-    js = read_file("app.js")
-    assert "data-hash" in js
+    assert "data-hash" in JS_TEXT

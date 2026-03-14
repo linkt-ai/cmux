@@ -54,7 +54,6 @@ final class GitGraphShortcutTests: XCTestCase {
         )
     }
 
-    // MARK: - Context key (disabled — panelIsGitGraph not yet added)
 }
 
 @MainActor

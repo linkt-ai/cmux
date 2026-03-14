@@ -2,6 +2,10 @@
  * All theme colors are injected at runtime via applyTheme() in app.js.
  * No :root defaults — applyTheme() is always called before updateGraph(). */
 
+:root {
+  --drawer-width: 320px;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -151,7 +155,7 @@ body {
 .commit-detail-drawer {
     position: fixed;
     right: 0; top: 0; bottom: 0;
-    width: 320px;
+    width: var(--drawer-width);
     transform: translateX(100%);
     transition: transform 200ms ease-out;
     background: var(--drawer-bg, var(--graph-bg));
