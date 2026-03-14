@@ -7,6 +7,7 @@
 	objects = {
 
 		/* Begin PBXBuildFile section */
+			F1000021A1B2C3D4E5F60718 /* Bonsplit in Frameworks */ = {isa = PBXBuildFile; productRef = F1000020A1B2C3D4E5F60718 /* Bonsplit */; };
 			A5001001 /* cmuxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001011 /* cmuxApp.swift */; };
 			A5001002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001012 /* ContentView.swift */; };
 			E62155868BB29FEB5DAAAF25 /* SidebarSelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD52285508B1D6A9875E7B3 /* SidebarSelectionState.swift */; };
@@ -296,6 +297,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F1000021A1B2C3D4E5F60718 /* Bonsplit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -599,6 +601,9 @@
 			dependencies = (
 				F1000009A1B2C3D4E5F60718 /* PBXTargetDependency */,
 			);
+				packageProductDependencies = (
+					F1000020A1B2C3D4E5F60718 /* Bonsplit */,
+				);
 			name = cmuxTests;
 			productName = cmuxTests;
 			productReference = F1000002A1B2C3D4E5F60718 /* cmuxTests.xctest */;
@@ -1114,6 +1119,10 @@
 				isa = XCSwiftPackageProductDependency;
 				package = A5001292 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 				productName = MarkdownUI;
+			F1000020A1B2C3D4E5F60718 /* Bonsplit */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = A5001260 /* XCLocalSwiftPackageReference "bonsplit" */;
+				productName = Bonsplit;
 			};
 /* End XCSwiftPackageProductDependency section */
 
