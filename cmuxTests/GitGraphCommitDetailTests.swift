@@ -107,7 +107,7 @@ final class GitGraphCommitDetailTests: XCTestCase {
 
     @MainActor
     func testHandleCommitSelectedAction() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp")
+        let panel = GitGraphPanel(repoPath: "/tmp")
         panel.handleAction("commitSelected", body: ["hash": "abc123"])
         panel.close()
     }
