@@ -15,6 +15,15 @@ final class GitGraphKeyboardNavJSTests: XCTestCase {
     override func setUp() async throws {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
+
+        // Inject test mode flag so test hooks are registered
+        let testModeScript = WKUserScript(
+            source: "window.__CMUX_TEST_MODE = true;",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(testModeScript)
+
         webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 800, height: 600), configuration: config)
 
         let projectRoot = URL(fileURLWithPath: #filePath)

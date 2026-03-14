@@ -176,7 +176,7 @@ body {
 
 /* Keyboard-focused commit row */
 .commit-row.focused {
-    border-left: 2px solid var(--accent-color);
+    border-left: 2px solid var(--accent-color, #0091FF);
     padding-left: 2px;
 }
 

@@ -419,6 +419,8 @@
   }
 
   document.addEventListener("keydown", function (e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
     if (e.key === "Escape") {
       hideContextMenu();
       focusedCommitIndex = -1;
@@ -427,6 +429,8 @@
       if (drawer) window.hideCommitDetail();
       return;
     }
+
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
 
     if (currentCommits.length === 0) return;
 
@@ -451,6 +455,7 @@
     }
 
     if (e.key === "ArrowLeft") {
+      e.preventDefault();
       if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
         var commit = currentCommits[focusedCommitIndex];
         if (commit.parents && commit.parents.length >= 2) {
@@ -465,6 +470,7 @@
     }
 
     if (e.key === "ArrowRight") {
+      e.preventDefault();
       if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
         var commit = currentCommits[focusedCommitIndex];
         if (commit.parents && commit.parents.length >= 2) {
@@ -479,6 +485,7 @@
     }
 
     if (e.key === "Enter") {
+      e.preventDefault();
       if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
         var hash = currentCommits[focusedCommitIndex].hash;
         postMessage("commitSelected", { hash: hash });

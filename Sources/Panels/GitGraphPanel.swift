@@ -285,6 +285,7 @@ final class GitGraphPanel: Panel, ObservableObject {
     func focus() {
         guard let window = webView.window, !webView.isHiddenOrHasHiddenAncestor else { return }
         window.makeFirstResponder(webView)
+        guard !webView.isLoading else { return }
         webView.evaluateJavaScript("window.setFocusOnGraph()", completionHandler: nil)
     }
 
