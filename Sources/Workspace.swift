@@ -299,6 +299,7 @@ extension Workspace {
         let terminalSnapshot: SessionTerminalPanelSnapshot?
         let browserSnapshot: SessionBrowserPanelSnapshot?
         let markdownSnapshot: SessionMarkdownPanelSnapshot?
+        let gitGraphSnapshot: SessionGitGraphPanelSnapshot?
         switch panel.panelType {
         case .terminal:
             guard let terminalPanel = panel as? TerminalPanel else { return nil }
@@ -322,6 +323,7 @@ extension Workspace {
             )
             browserSnapshot = nil
             markdownSnapshot = nil
+            gitGraphSnapshot = nil
         case .browser:
             guard let browserPanel = panel as? BrowserPanel else { return nil }
             terminalSnapshot = nil
@@ -340,6 +342,16 @@ extension Workspace {
             terminalSnapshot = nil
             browserSnapshot = nil
             markdownSnapshot = SessionMarkdownPanelSnapshot(filePath: mdPanel.filePath)
+            gitGraphSnapshot = nil
+        case .gitGraph:
+            guard let gitGraphPanel = panel as? GitGraphPanel else { return nil }
+            terminalSnapshot = nil
+            browserSnapshot = nil
+            markdownSnapshot = nil
+            gitGraphSnapshot = SessionGitGraphPanelSnapshot(
+                repoPath: gitGraphPanel.repoPath,
+                scrollPositionY: gitGraphPanel.cachedScrollY
+            )
         }
 
         return SessionPanelSnapshot(
@@ -356,6 +368,7 @@ extension Workspace {
             terminal: terminalSnapshot,
             browser: browserSnapshot,
             markdown: markdownSnapshot
+            gitGraph: gitGraphSnapshot
         )
     }
 
@@ -532,6 +545,18 @@ extension Workspace {
             }
             applySessionPanelMetadata(snapshot, toPanelId: markdownPanel.id)
             return markdownPanel.id
+        case .gitGraph:
+            let repoPath = snapshot.gitGraph?.repoPath ?? snapshot.directory ?? currentDirectory
+            guard let gitGraphPanel = newGitGraphSurface(
+                inPane: paneId,
+                repoPath: repoPath,
+                focus: false
+            ) else {
+                return nil
+            }
+            gitGraphPanel.pendingScrollRestoreY = snapshot.gitGraph?.scrollPositionY
+            applySessionPanelMetadata(snapshot, toPanelId: gitGraphPanel.id)
+            return gitGraphPanel.id
         }
     }
 
@@ -1014,6 +1039,7 @@ final class Workspace: Identifiable, ObservableObject {
         static let terminal = "terminal"
         static let browser = "browser"
         static let markdown = "markdown"
+        static let gitGraph = "gitGraph"
     }
 
     enum PanelShellActivityState: String {
@@ -1408,6 +1434,10 @@ final class Workspace: Identifiable, ObservableObject {
         panels[panelId] as? MarkdownPanel
     }
 
+    func gitGraphPanel(for panelId: UUID) -> GitGraphPanel? {
+        panels[panelId] as? GitGraphPanel
+    }
+
     private func surfaceKind(for panel: any Panel) -> String {
         switch panel.panelType {
         case .terminal:
@@ -1416,6 +1446,8 @@ final class Workspace: Identifiable, ObservableObject {
             return SurfaceKind.browser
         case .markdown:
             return SurfaceKind.markdown
+        case .gitGraph:
+            return SurfaceKind.gitGraph
         }
     }
 
@@ -2477,6 +2509,26 @@ final class Workspace: Identifiable, ObservableObject {
             icon: markdownPanel.displayIcon,
             kind: SurfaceKind.markdown,
             isDirty: markdownPanel.isDirty,
+    // MARK: - Git Graph Panel Factory
+
+    @discardableResult
+    func newGitGraphSurface(
+        inPane paneId: PaneID,
+        repoPath: String,
+        focus: Bool? = nil
+    ) -> GitGraphPanel? {
+        let shouldFocusNewTab = focus ?? (bonsplitController.focusedPaneId == paneId)
+
+        let gitGraphPanel = GitGraphPanel(repoPath: repoPath)
+        gitGraphPanel.workspace = self
+        panels[gitGraphPanel.id] = gitGraphPanel
+        panelTitles[gitGraphPanel.id] = gitGraphPanel.displayTitle
+
+        guard let newTabId = bonsplitController.createTab(
+            title: gitGraphPanel.displayTitle,
+            icon: gitGraphPanel.displayIcon,
+            kind: SurfaceKind.gitGraph,
+            isDirty: false,
             isLoading: false,
             isPinned: false,
             inPane: paneId
@@ -2519,6 +2571,47 @@ final class Workspace: Identifiable, ObservableObject {
         terminalInheritanceFontPointsByPanelId.removeAll(keepingCapacity: false)
         lastTerminalConfigInheritancePanelId = nil
         lastTerminalConfigInheritanceFontPoints = nil
+            panels.removeValue(forKey: gitGraphPanel.id)
+            panelTitles.removeValue(forKey: gitGraphPanel.id)
+            return nil
+        }
+
+        surfaceIdToPanelId[newTabId] = gitGraphPanel.id
+
+        if shouldFocusNewTab {
+            bonsplitController.focusPane(paneId)
+            bonsplitController.selectTab(newTabId)
+            gitGraphPanel.focus()
+            applyTabSelection(tabId: newTabId, inPane: paneId)
+        }
+
+        installGitGraphPanelSubscription(gitGraphPanel)
+
+        return gitGraphPanel
+    }
+
+    private func installGitGraphPanelSubscription(_ gitGraphPanel: GitGraphPanel) {
+        let subscription = gitGraphPanel.$displayTitle
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self, weak gitGraphPanel] newTitle in
+                guard let self,
+                      let gitGraphPanel,
+                      let tabId = self.surfaceIdFromPanelId(gitGraphPanel.id) else { return }
+                if self.panelTitles[gitGraphPanel.id] != newTitle {
+                    self.panelTitles[gitGraphPanel.id] = newTitle
+                }
+                let resolvedTitle = self.resolvedPanelTitle(panelId: gitGraphPanel.id, fallback: newTitle)
+                guard let existing = self.bonsplitController.tab(tabId),
+                      existing.title != resolvedTitle else { return }
+                self.bonsplitController.updateTab(
+                    tabId,
+                    title: resolvedTitle,
+                    hasCustomTitle: self.panelCustomTitles[gitGraphPanel.id] != nil
+                )
+            }
+        panelSubscriptions[gitGraphPanel.id] = subscription
+        gitGraphPanel.installWorkspaceSubscriptions()
     }
 
     /// Close a panel.

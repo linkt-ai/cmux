@@ -1525,7 +1525,7 @@ struct ContentView: View {
         }
     }
 
-    private enum CommandPaletteContextKeys {
+    enum CommandPaletteContextKeys {
         static let hasWorkspace = "workspace.hasSelection"
         static let workspaceName = "workspace.name"
         static let workspaceHasCustomName = "workspace.hasCustomName"
@@ -4536,6 +4536,8 @@ struct ContentView: View {
             return .toggleBrowserDeveloperTools
         case "palette.browserConsole":
             return .showBrowserJavaScriptConsole
+        case "palette.openGitGraph":
+            return .openGitGraph
         case "palette.browserSplitRight", "palette.terminalSplitBrowserRight":
             return .splitBrowserRight
         case "palette.browserSplitDown", "palette.terminalSplitBrowserDown":
@@ -4747,6 +4749,23 @@ struct ContentView: View {
                 subtitle: constant(String(localized: "command.newBrowserTab.subtitle", defaultValue: "Tab")),
                 shortcutHint: "⌘⇧L",
                 keywords: ["new", "browser", "tab", "web"]
+            )
+        )
+        contributions.append(
+            CommandPaletteCommandContribution(
+                commandId: "palette.openGitGraph",
+                title: constant(String(localized: "command.openGitGraph.title", defaultValue: "Git Graph")),
+                subtitle: constant(String(localized: "command.openGitGraph.subtitle", defaultValue: "Panel")),
+                shortcutHint: "⇧⌘G",
+                keywords: ["git", "graph", "branch", "commit", "history"]
+            )
+        )
+        contributions.append(
+            CommandPaletteCommandContribution(
+                commandId: "palette.newGitGraphTab",
+                title: constant(String(localized: "command.newGitGraphTab.title", defaultValue: "New Tab (Git Graph)")),
+                subtitle: constant(String(localized: "command.newGitGraphTab.subtitle", defaultValue: "Tab")),
+                keywords: ["new", "git", "graph", "tab"]
             )
         )
         contributions.append(
@@ -5388,6 +5407,19 @@ struct ContentView: View {
             // is not blocked by the palette visibility guard.
             DispatchQueue.main.async {
                 _ = AppDelegate.shared?.openBrowserAndFocusAddressBar()
+            }
+        }
+        registry.register(commandId: "palette.openGitGraph") {
+            DispatchQueue.main.async {
+                _ = AppDelegate.shared?.openGitGraph()
+            }
+        }
+        registry.register(commandId: "palette.newGitGraphTab") {
+            DispatchQueue.main.async {
+                guard let appDelegate = AppDelegate.shared,
+                      let manager = appDelegate.tabManager,
+                      let workspace = manager.selectedWorkspace else { return }
+                _ = manager.addGitGraphTab(repoPath: workspace.currentDirectory)
             }
         }
         registry.register(commandId: "palette.closeTab") {

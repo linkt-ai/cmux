@@ -37,6 +37,7 @@ struct cmuxApp: App {
     @AppStorage(KeyboardShortcutSettings.Action.renameWorkspace.defaultsKey) private var renameWorkspaceShortcutData = Data()
     @AppStorage(KeyboardShortcutSettings.Action.openFolder.defaultsKey) private var openFolderShortcutData = Data()
     @AppStorage(KeyboardShortcutSettings.Action.closeWorkspace.defaultsKey) private var closeWorkspaceShortcutData = Data()
+    @AppStorage(KeyboardShortcutSettings.Action.openGitGraph.defaultsKey) private var openGitGraphShortcutData = Data()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
@@ -617,6 +618,10 @@ struct cmuxApp: App {
                     performBrowserSplitFromMenu(direction: .down)
                 }
 
+                splitCommandButton(title: String(localized: "menu.view.openGitGraph", defaultValue: "Git Graph"), shortcut: openGitGraphMenuShortcut) {
+                    _ = AppDelegate.shared?.openGitGraph()
+                }
+
                 Divider()
 
                 // Cmd+1 through Cmd+9 for workspace selection (9 = last workspace)
@@ -786,6 +791,10 @@ struct cmuxApp: App {
             from: closeWorkspaceShortcutData,
             fallback: KeyboardShortcutSettings.Action.closeWorkspace.defaultShortcut
         )
+    }
+
+    private var openGitGraphMenuShortcut: StoredShortcut {
+        decodeShortcut(from: openGitGraphShortcutData, fallback: KeyboardShortcutSettings.Action.openGitGraph.defaultShortcut)
     }
 
     private var notificationMenuSnapshot: NotificationMenuSnapshot {
