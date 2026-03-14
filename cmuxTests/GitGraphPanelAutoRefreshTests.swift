@@ -13,7 +13,7 @@ final class GitGraphPanelAutoRefreshTests: XCTestCase {
     // MARK: - Debounce
 
     func testScheduleRefreshDebounces() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
 
         panel.scheduleRefresh()
         panel.scheduleRefresh()
@@ -23,7 +23,7 @@ final class GitGraphPanelAutoRefreshTests: XCTestCase {
     }
 
     func testScheduleRefreshCancelsPrevious() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
 
         panel.scheduleRefresh()
         let firstItem = panel.pendingRefreshWorkItem
@@ -41,7 +41,7 @@ final class GitGraphPanelAutoRefreshTests: XCTestCase {
     // MARK: - Cleanup
 
     func testCloseRemovesSubscriptions() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         panel.close()
         XCTAssertFalse(panel.hasScheduledRefresh,
                        "Close should cancel pending refresh")
@@ -50,7 +50,7 @@ final class GitGraphPanelAutoRefreshTests: XCTestCase {
     // MARK: - Visibility Gate
 
     func testRefreshSkippedWhenNotVisible() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         panel.isVisibleInUI = false
 
         panel.scheduleRefresh()
@@ -61,14 +61,14 @@ final class GitGraphPanelAutoRefreshTests: XCTestCase {
     // MARK: - Workspace Wiring
 
     func testWorkspaceRefIsNilBeforeWiring() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         XCTAssertNil(panel.workspace, "workspace should be nil before wiring")
     }
 
     // MARK: - Non-Git Directory Handling
 
     func testShowNoRepoStateClearsRepoPath() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         XCTAssertEqual(panel.repoPath, "/tmp/test-repo")
 
         panel.showNoRepoState()
@@ -79,7 +79,7 @@ final class GitGraphPanelAutoRefreshTests: XCTestCase {
     }
 
     func testShowNoRepoStateThenRecovery() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
 
         panel.showNoRepoState()
         XCTAssertEqual(panel.repoPath, "")
