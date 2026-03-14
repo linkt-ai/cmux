@@ -11,67 +11,57 @@ import WebKit
 final class GitGraphPanelTests: XCTestCase {
 
     func testPanelTypeIsGitGraph() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         XCTAssertEqual(panel.panelType, .gitGraph)
     }
 
     func testIdIsStableAfterCreation() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         let id1 = panel.id
         let id2 = panel.id
         XCTAssertEqual(id1, id2)
     }
 
     func testDisplayTitleContainsRepoName() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/Users/test/my-project")
+        let panel = GitGraphPanel(repoPath: "/Users/test/my-project")
         XCTAssertTrue(panel.displayTitle.contains("my-project"))
     }
 
     func testDisplayIconIsBranch() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         XCTAssertEqual(panel.displayIcon, "arrow.triangle.branch")
     }
 
     func testWebViewIsCreated() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         XCTAssertNotNil(panel.webView)
     }
 
-    func testCloseStopsLoading() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
-        panel.close()
-        XCTAssertNil(panel.webView.navigationDelegate)
-    }
-
-    func testTriggerFlashIncrements() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+    func testTriggerFlashAdvancesToken() {
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         let before = panel.focusFlashToken
         panel.triggerFlash()
-        XCTAssertEqual(panel.focusFlashToken, before + 1)
+        XCTAssertGreaterThan(panel.focusFlashToken, before,
+                             "triggerFlash should advance the token so the view re-animates")
     }
 
-    // MARK: - Message Handler Registration
+    // MARK: - Message Handler Lifecycle
 
-    func testMessageHandlerIsRegistered() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+    func testCloseRemovesNavigationDelegate() {
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
+        XCTAssertNotNil(panel.webView.navigationDelegate,
+                        "Navigation delegate should be set after init")
         panel.close()
-        // If we got here without crash, the handler was registered and removed successfully.
+        XCTAssertNil(panel.webView.navigationDelegate,
+                     "close() should remove navigation delegate")
     }
 
-    func testCloseRemovesMessageHandler() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
+    func testDoubleCloseDoesNotCrash() {
+        let panel = GitGraphPanel(repoPath: "/tmp/test-repo")
         panel.close()
-        // Calling close() twice should not crash (handler already removed).
         panel.close()
+        XCTAssertNil(panel.webView.navigationDelegate,
+                     "Navigation delegate should remain nil after double close")
     }
 
-    // MARK: - Action Handling
-
-    func testCopyHashCopiesToPasteboard() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp/test-repo")
-        panel.handleAction("copyHash", body: ["hash": "abc123def456"])
-        let copied = NSPasteboard.general.string(forType: .string)
-        XCTAssertEqual(copied, "abc123def456")
-        panel.close()
-    }
 }

@@ -254,7 +254,7 @@ enum KeyboardShortcutSettings {
     static func newSurfaceShortcut() -> StoredShortcut { shortcut(for: .newSurface) }
 
     static func openBrowserShortcut() -> StoredShortcut { shortcut(for: .openBrowser) }
-static func toggleBrowserDeveloperToolsShortcut() -> StoredShortcut { shortcut(for: .toggleBrowserDeveloperTools) }
+    static func toggleBrowserDeveloperToolsShortcut() -> StoredShortcut { shortcut(for: .toggleBrowserDeveloperTools) }
     static func showBrowserJavaScriptConsoleShortcut() -> StoredShortcut { shortcut(for: .showBrowserJavaScriptConsole) }
 }
 

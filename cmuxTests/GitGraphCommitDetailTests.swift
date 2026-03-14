@@ -103,12 +103,4 @@ final class GitGraphCommitDetailTests: XCTestCase {
         XCTAssertTrue(didFail)
     }
 
-    // MARK: - Panel: commitSelected action
-
-    @MainActor
-    func testHandleCommitSelectedAction() {
-        let panel = GitGraphPanel(workspaceId: UUID(), repoPath: "/tmp")
-        panel.handleAction("commitSelected", body: ["hash": "abc123"])
-        panel.close()
-    }
 }

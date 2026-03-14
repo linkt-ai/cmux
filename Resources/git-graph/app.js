@@ -4,6 +4,7 @@
 //   window.applyTheme(hexColor, isDark) — update theme colors
 //   window.showCommitDetail(jsonString) — show commit detail drawer
 //   window.hideCommitDetail() — hide commit detail drawer
+//   window.setFocusOnGraph() — initialize keyboard focus on first commit
 
 (function () {
   "use strict";
@@ -20,10 +21,48 @@
   var LANE_WIDTH = 12;
   var LEFT_PADDING = 10;
   var NODE_RADIUS = 3;
+  var DRAWER_WIDTH = "320px";
+
+  // Cached DOM references
+  var cachedDrawer = null;
 
   // Commit lookup map — populated by updateGraph
   var commitsByHash = {};
   var selectedCommitHash = null;
+  var focusedCommitIndex = -1;
+  var currentCommits = [];
+  var currentHashToIndex = {};
+
+  // -------------------------------------------------------
+  // DOM helpers
+  // -------------------------------------------------------
+
+  function getDrawer() {
+    if (cachedDrawer && cachedDrawer.parentNode) return cachedDrawer;
+    cachedDrawer = document.querySelector(".commit-detail-drawer");
+    return cachedDrawer;
+  }
+
+  function copyHashAndToast(hash, anchorEl) {
+    postMessage("copyHash", { hash: hash });
+    if (anchorEl) showCopiedToast(anchorEl);
+  }
+
+  function updateRowClass(className, matchIndex, matchAttr) {
+    var rows = document.querySelectorAll(".commit-row");
+    for (var i = 0; i < rows.length; i++) {
+      if (matchAttr !== undefined
+        ? rows[i].getAttribute("data-hash") === matchAttr
+        : i === matchIndex) {
+        rows[i].classList.add(className);
+      } else {
+        rows[i].classList.remove(className);
+      }
+    }
+    if (className === "focused" && matchIndex >= 0 && matchIndex < rows.length) {
+      rows[matchIndex].scrollIntoView({ block: "nearest" });
+    }
+  }
 
   // -------------------------------------------------------
   // Color helpers
@@ -120,11 +159,12 @@
     updateSelectedRow();
 
     // Reuse or create drawer
-    var drawer = document.querySelector(".commit-detail-drawer");
+    var drawer = getDrawer();
     if (!drawer) {
       drawer = document.createElement("div");
       drawer.className = "commit-detail-drawer";
       document.body.appendChild(drawer);
+      cachedDrawer = drawer;
     }
 
     // Build drawer content
@@ -151,8 +191,7 @@
       fullHash.className = "detail-full-hash";
       fullHash.textContent = detail.hash;
       fullHash.onclick = function () {
-        postMessage("copyHash", { hash: detail.hash });
-        showCopiedToast(fullHash);
+        copyHashAndToast(detail.hash, fullHash);
       };
       sec.appendChild(fullHash);
     }));
@@ -249,15 +288,14 @@
     var actions = document.createElement("div");
     actions.className = "detail-actions";
 
-    var copyBtn2 = document.createElement("button");
-    copyBtn2.className = "detail-action-btn";
-    copyBtn2.setAttribute("data-action", "copyHash");
-    copyBtn2.textContent = "Copy Hash";
-    copyBtn2.onclick = function () {
-      postMessage("copyHash", { hash: detail.hash });
-      showCopiedToast(copyBtn2);
+    var copyBtn = document.createElement("button");
+    copyBtn.className = "detail-action-btn";
+    copyBtn.setAttribute("data-action", "copyHash");
+    copyBtn.textContent = "Copy Hash";
+    copyBtn.onclick = function () {
+      copyHashAndToast(detail.hash, copyBtn);
     };
-    actions.appendChild(copyBtn2);
+    actions.appendChild(copyBtn);
 
     var openBtn = document.createElement("button");
     openBtn.className = "detail-action-btn";
@@ -277,11 +315,11 @@
 
     // Shift graph container
     var container = document.getElementById("graph-container");
-    if (container) container.style.marginRight = "320px";
+    if (container) container.style.marginRight = DRAWER_WIDTH;
   };
 
   window.hideCommitDetail = function () {
-    var drawer = document.querySelector(".commit-detail-drawer");
+    var drawer = getDrawer();
     if (drawer) {
       drawer.classList.remove("open");
     }
@@ -292,14 +330,11 @@
   };
 
   function updateSelectedRow() {
-    var rows = document.querySelectorAll(".commit-row");
-    for (var i = 0; i < rows.length; i++) {
-      if (rows[i].getAttribute("data-hash") === selectedCommitHash) {
-        rows[i].classList.add("selected");
-      } else {
-        rows[i].classList.remove("selected");
-      }
-    }
+    updateRowClass("selected", -1, selectedCommitHash);
+  }
+
+  function updateFocusedRow() {
+    updateRowClass("focused", focusedCommitIndex);
   }
 
   function buildSection(label, buildContent) {
@@ -356,7 +391,7 @@
     copyItem.className = "context-menu-item";
     copyItem.textContent = "Copy SHA";
     copyItem.onclick = function () {
-      postMessage("copyHash", { hash: hash });
+      copyHashAndToast(hash, null);
       hideContextMenu();
     };
     menu.appendChild(copyItem);
@@ -400,17 +435,88 @@
   }
 
   document.addEventListener("keydown", function (e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
     if (e.key === "Escape") {
       hideContextMenu();
-      var drawer = document.querySelector(".commit-detail-drawer.open");
-      if (drawer) window.hideCommitDetail();
+      focusedCommitIndex = -1;
+      updateFocusedRow();
+      var openDrawer = getDrawer();
+      if (openDrawer && openDrawer.classList.contains("open")) window.hideCommitDetail();
+      return;
+    }
+
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    if (currentCommits.length === 0) return;
+
+    if (e.key === "ArrowDown" || e.key === "j") {
+      e.preventDefault();
+      if (focusedCommitIndex < 0) {
+        focusedCommitIndex = 0;
+      } else if (focusedCommitIndex < currentCommits.length - 1) {
+        focusedCommitIndex++;
+      }
+      updateFocusedRow();
+      return;
+    }
+
+    if (e.key === "ArrowUp" || e.key === "k") {
+      e.preventDefault();
+      if (focusedCommitIndex > 0) {
+        focusedCommitIndex--;
+        updateFocusedRow();
+      }
+      return;
+    }
+
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
+        var commit = currentCommits[focusedCommitIndex];
+        if (commit.parents && commit.parents.length >= 2) {
+          var parentIndex = currentHashToIndex[commit.parents[0]];
+          if (parentIndex !== undefined) {
+            focusedCommitIndex = parentIndex;
+            updateFocusedRow();
+          }
+        }
+      }
+      return;
+    }
+
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
+        var commit = currentCommits[focusedCommitIndex];
+        if (commit.parents && commit.parents.length >= 2) {
+          var parentIndex = currentHashToIndex[commit.parents[1]];
+          if (parentIndex !== undefined) {
+            focusedCommitIndex = parentIndex;
+            updateFocusedRow();
+          }
+        }
+      }
+      return;
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
+        var hash = currentCommits[focusedCommitIndex].hash;
+        postMessage("commitSelected", { hash: hash });
+        if (window.__CMUX_TEST_MODE && window.__test_onCommitSelected) {
+          window.__test_onCommitSelected(hash);
+        }
+      }
+      return;
     }
   });
 
   // Click-outside to close drawer
   document.addEventListener("click", function (e) {
-    var drawer = document.querySelector(".commit-detail-drawer.open");
-    if (!drawer) return;
+    var drawer = getDrawer();
+    if (!drawer || !drawer.classList.contains("open")) return;
     // If click is inside the drawer, ignore
     if (drawer.contains(e.target)) return;
     // If click is on a commit row, let the row click handler manage it
@@ -765,10 +871,14 @@
 
     var commits = data.commits || [];
 
+    var previousFocusedHash = (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length)
+      ? currentCommits[focusedCommitIndex].hash : null;
+    currentCommits = commits;
+
     // Build commitsByHash lookup
     commitsByHash = {};
-    for (var ci2 = 0; ci2 < commits.length; ci2++) {
-      commitsByHash[commits[ci2].hash] = commits[ci2];
+    for (var mi = 0; mi < commits.length; mi++) {
+      commitsByHash[commits[mi].hash] = commits[mi];
     }
 
     // Map refs to their commits, deduplicating remote tracking branches
@@ -782,8 +892,8 @@
         }
       }
       // Second pass: add refs, skipping remotes that duplicate a local branch
-      for (var ri2 = 0; ri2 < data.refs.length; ri2++) {
-        var ref = data.refs[ri2];
+      for (var rj = 0; rj < data.refs.length; rj++) {
+        var ref = data.refs[rj];
         if (ref.type === "remoteBranch") {
           // Strip "origin/" (or any remote prefix) to check for local duplicate
           var slashIdx = ref.name.indexOf("/");
@@ -808,6 +918,7 @@
     for (var hi = 0; hi < commits.length; hi++) {
       hashToIndex[commits[hi].hash] = hi;
     }
+    currentHashToIndex = hashToIndex;
 
     // Layout
     var layout = assignLanes(commits, hashToIndex);
@@ -829,7 +940,37 @@
     wrapper.appendChild(textCol);
 
     container.appendChild(wrapper);
+
+    // Persist keyboard focus across refresh
+    if (previousFocusedHash) {
+      if (currentHashToIndex.hasOwnProperty(previousFocusedHash)) {
+        focusedCommitIndex = currentHashToIndex[previousFocusedHash];
+      } else {
+        focusedCommitIndex = 0;
+      }
+      updateFocusedRow();
+    }
   };
+
+  window.setFocusOnGraph = function () {
+    if (focusedCommitIndex < 0 && currentCommits.length > 0) {
+      focusedCommitIndex = 0;
+      updateFocusedRow();
+    }
+  };
+
+  if (window.__CMUX_TEST_MODE) {
+    window.__test_getFocusedIndex = function () {
+      return focusedCommitIndex;
+    };
+
+    window.__test_getFocusedHash = function () {
+      if (focusedCommitIndex >= 0 && focusedCommitIndex < currentCommits.length) {
+        return currentCommits[focusedCommitIndex].hash;
+      }
+      return null;
+    };
+  }
 
   window.getScrollY = function () {
     return window.scrollY || document.documentElement.scrollTop || 0;

@@ -5419,9 +5419,7 @@ struct ContentView: View {
                 guard let appDelegate = AppDelegate.shared,
                       let manager = appDelegate.tabManager,
                       let workspace = manager.selectedWorkspace else { return }
-                let repoPath = workspace.currentDirectory
-                _ = manager.addTab()
-                _ = manager.openGitGraph(repoPath: repoPath)
+                _ = manager.addGitGraphTab(repoPath: workspace.currentDirectory)
             }
         }
         registry.register(commandId: "palette.closeTab") {

@@ -20,7 +20,7 @@ struct GitGraphPanelView: View {
 
     private var panelHeader: some View {
         HStack(spacing: 8) {
-            Image(systemName: "arrow.triangle.branch")
+            Image(systemName: panel.displayIcon ?? "arrow.triangle.branch")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
 
